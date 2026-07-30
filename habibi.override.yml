@@ -1,0 +1,37 @@
+# Habibi ERP — локальная разработка поверх pwd.yml
+#
+# Монтирует локальный репозиторий /home/qwerty/Desktop/habibi-erp
+# на место apps/erpnext внутри контейнеров. Базовый образ остаётся
+# frappe/erpnext:v16.30.0 (он даёт frappe 16.29 + окружение), но код
+# приложения берётся из рабочей копии — правки видны без пересборки образа.
+#
+# Работает потому, что erpnext установлен через env/.../site-packages/erpnext.pth,
+# который содержит ровно этот путь. Путь не меняется — импорт не ломается.
+#
+# Запуск:
+#   docker compose -f pwd.yml -f habibi.override.yml up -d
+#
+# Ветка репозитория должна быть v16-совместимой (habibi-v16), иначе
+# получится erpnext 17-dev поверх frappe 16 — несовместимая пара.
+
+x-habibi-app: &habibi-app
+  - /home/qwerty/Desktop/habibi-erp:/home/frappe/frappe-bench/apps/erpnext
+
+services:
+  backend:
+    volumes: *habibi-app
+
+  configurator:
+    volumes: *habibi-app
+
+  create-site:
+    volumes: *habibi-app
+
+  queue-long:
+    volumes: *habibi-app
+
+  queue-short:
+    volumes: *habibi-app
+
+  scheduler:
+    volumes: *habibi-app
