@@ -14,6 +14,12 @@ Bench собирается **внутри образа**, а не хранитс
 ]
 ```
 
+Ветка приложения указана явно, поэтому её имя ни на что не влияет кроме
+самого клонирования. `habibi-v16` названа по соглашению ERPNext, где
+стабильные линии — `version-16`, `version-15`, а `develop` — следующая
+версия. В `habibi-erp` она не может лежать ни на `main` (там исходники
+Frappe CRM), ни на `develop` (там линия v17-dev, несовместимая с frappe v16).
+
 `images/layered/Containerfile` монтирует этот файл BuildKit-секретом,
 выполняет `bench init --apps_path=...`, собирает ассеты и удаляет `.git` из
 каждого приложения. Frappe Framework в манифест не входит — он задаётся
@@ -48,8 +54,12 @@ pull_policy: ${PULL_POLICY:-always}
 # 2. В этом клоне:
 git remote rename origin upstream          # frappe/frappe_docker остаётся как upstream
 git remote add origin https://github.com/DHI-Partners/habibi-docker.git
-git push -u origin habibi-deploy
+git push -u origin main
 ```
+
+Файлы развёртывания лежат на `main` намеренно: развёртывание начинается с
+`git clone`, который забирает ветку по умолчанию. Если держать их на
+отдельной ветке, в свежем клоне не окажется ни `apps.json`, ни `habibi.env`.
 
 После первого пуша workflow соберёт и запушит `ghcr.io/dhi-partners/habibi-erp:16`.
 Сборка занимает 20–40 минут (полный `bench init` + компиляция ассетов).
