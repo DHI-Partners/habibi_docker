@@ -11,7 +11,7 @@
 # Запуск:
 #   docker compose -f pwd.yml -f habibi.override.yml up -d
 #
-# Ветка репозитория должна быть v16-совместимой (habibi-v16), иначе
+# Ветка репозитория должна быть v16-совместимой (main), иначе
 # получится erpnext 17-dev поверх frappe 16 — несовместимая пара.
 
 x-habibi-app: &habibi-app

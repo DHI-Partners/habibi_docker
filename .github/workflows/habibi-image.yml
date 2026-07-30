@@ -6,7 +6,7 @@ name: Habibi ERP image
 #   push               — изменился apps.json, скрипт сборки или сам workflow
 #   workflow_dispatch  — вручную из UI
 #   repository_dispatch — из другого репозитория (например, habibi-erp при
-#                        пуше в habibi-v16), см. HABIBI-DEPLOY.md
+#                        пуше в main), см. HABIBI-DEPLOY.md
 
 on:
   push:

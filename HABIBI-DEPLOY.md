@@ -10,15 +10,14 @@ Bench собирается **внутри образа**, а не хранитс
 
 ```json
 [
-  { "url": "https://github.com/DHI-Partners/habibi-erp", "branch": "habibi-v16" }
+  { "url": "https://github.com/DHI-Partners/habibi-erp", "branch": "main" }
 ]
 ```
 
-Ветка приложения указана явно, поэтому её имя ни на что не влияет кроме
-самого клонирования. `habibi-v16` названа по соглашению ERPNext, где
-стабильные линии — `version-16`, `version-15`, а `develop` — следующая
-версия. В `habibi-erp` она не может лежать ни на `main` (там исходники
-Frappe CRM), ни на `develop` (там линия v17-dev, несовместимая с frappe v16).
+`main` в `habibi-erp` — производственная линия: ERPNext version-16 плюс
+брендинг Habibi. Ветка `develop` там осталась от линии v17-dev и для
+развёртывания не годится — приложение v17 несовместимо с frappe v16,
+на котором собран образ.
 
 `images/layered/Containerfile` монтирует этот файл BuildKit-секретом,
 выполняет `bench init --apps_path=...`, собирает ассеты и удаляет `.git` из
@@ -136,7 +135,7 @@ ghcr.io и не увидит локально собранный.
 
 ```json
 [
-  { "url": "https://github.com/DHI-Partners/habibi-erp",  "branch": "habibi-v16" },
+  { "url": "https://github.com/DHI-Partners/habibi-erp",  "branch": "main" },
   { "url": "https://github.com/DHI-Partners/saas_bridge", "branch": "main" }
 ]
 ```
@@ -165,7 +164,7 @@ Workflow подставит секрет вместо файла из репоз
 
 ## Обновление приложения
 
-`apps.json` фиксирует **ветку**, а не коммит, поэтому пуш в `habibi-v16`
+`apps.json` фиксирует **ветку**, а не коммит, поэтому пуш в `main`
 меняет содержимое следующего образа. Чтобы пересборка запускалась
 автоматически, добавьте в репозиторий `habibi-erp` workflow, дергающий этот:
 
