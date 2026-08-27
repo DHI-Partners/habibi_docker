@@ -30,7 +30,7 @@ repos:
         exclude: ^docs/pnpm-lock\.yaml$
         args:
           - -L
-          - "ro"
+          - "ro,fulfilment"
 
   - repo: local
     hooks:

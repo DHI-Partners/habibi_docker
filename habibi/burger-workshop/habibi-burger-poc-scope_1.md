@@ -44,26 +44,26 @@ Food cost & ingredient tracking (would require Stock + BOM), dine-in/counter sal
 **Goal: a working order pipeline with humans taking WhatsApp orders.**
 
 ```
-Customer writes on WhatsApp  
-        ↓  
-Staff reads message in shared inbox  
-        ↓  
-Staff creates Sales Order in ERPNext  
-   (customer, items, address, delivery time, payment method)  
-        ↓  
-Order Status: New → Confirmed  
-        ↓  
-KITCHEN receives ticket  ──────────►  Kitchen prepares  
-   (Kanban board / printed ticket)  
-        ↓  
-Order Status: In Kitchen → Ready  
-        ↓  
-COURIER assigned + Delivery Note printed  
-        ↓  
-Order Status: Out for Delivery  
-        ↓  
-Delivered → Sales Invoice → Payment Entry  
-        ↓  
+Customer writes on WhatsApp
+        ↓
+Staff reads message in shared inbox
+        ↓
+Staff creates Sales Order in ERPNext
+   (customer, items, address, delivery time, payment method)
+        ↓
+Order Status: New → Confirmed
+        ↓
+KITCHEN receives ticket  ──────────►  Kitchen prepares
+   (Kanban board / printed ticket)
+        ↓
+Order Status: In Kitchen → Ready
+        ↓
+COURIER assigned + Delivery Note printed
+        ↓
+Order Status: Out for Delivery
+        ↓
+Delivered → Sales Invoice → Payment Entry
+        ↓
 Order Status: Delivered
 ```
 
@@ -91,28 +91,28 @@ Order Status: Delivered
 **Goal: the agent handles the conversation; staff only supervise.**
 
 ```
-Customer message arrives via WhatsApp API webhook  
-        ↓  
-INTENT DETECTION  
-   ├─ New order          → order-taking dialogue  
-   ├─ Order status query → lookup by phone → reply with status  
-   ├─ Menu question      → answer from menu data  
-   ├─ Complaint          → escalate to human immediately  
-   └─ Unclear            → clarify, then route (or escalate after 2 tries)  
-        ↓  
-ORDER-TAKING DIALOGUE (slot filling)  
-   • items + quantities      • delivery or pickup  
-   • delivery address        • requested time  
-   • payment method          • confirm total  
-        ↓  
-Agent reads back full order → customer confirms  
-        ↓  
-Sales Order created via ERPNext REST API (status: New)  
-        ↓  
-\[Optional gate\] Staff confirms → Confirmed  
-        ↓  
-... continues into Stage 1 pipeline unchanged ...  
-        ↓  
+Customer message arrives via WhatsApp API webhook
+        ↓
+INTENT DETECTION
+   ├─ New order          → order-taking dialogue
+   ├─ Order status query → lookup by phone → reply with status
+   ├─ Menu question      → answer from menu data
+   ├─ Complaint          → escalate to human immediately
+   └─ Unclear            → clarify, then route (or escalate after 2 tries)
+        ↓
+ORDER-TAKING DIALOGUE (slot filling)
+   • items + quantities      • delivery or pickup
+   • delivery address        • requested time
+   • payment method          • confirm total
+        ↓
+Agent reads back full order → customer confirms
+        ↓
+Sales Order created via ERPNext REST API (status: New)
+        ↓
+\[Optional gate\] Staff confirms → Confirmed
+        ↓
+... continues into Stage 1 pipeline unchanged ...
+        ↓
 Automated status updates pushed back to customer on WhatsApp
 ```
 
@@ -145,9 +145,9 @@ Automated status updates pushed back to customer on WhatsApp
 ### Document chain
 
 ```
-Customer  →  Sales Order  →  Sales Invoice  →  Payment Entry  
-                  │  
-                  ├──►  Kitchen Ticket   (print format / kanban view)  
+Customer  →  Sales Order  →  Sales Invoice  →  Payment Entry
+                  │
+                  ├──►  Kitchen Ticket   (print format / kanban view)
                   └──►  Delivery Note    (print format for courier)
 ```
 
@@ -180,8 +180,8 @@ Delivery fee: a non-stock item line ("Delivery Charge") or a Shipping Rule per z
 ### 5.2 Order Workflow
 
 ```
-New → Confirmed → In Kitchen → Ready → Out for Delivery → Delivered  
-  │        │           │          │            │  
+New → Confirmed → In Kitchen → Ready → Out for Delivery → Delivered
+  │        │           │          │            │
   └────────┴───────────┴──────────┴────────────┴──► Cancelled
 ```
 
@@ -227,10 +227,10 @@ Segment membership resolved by a server script query against Sales Orders — no
 ### 6.2 Campaign flow
 
 ```
-Define Segment → Preview member count → Create Campaign  
-   → Attach approved template + coupon → Schedule  
-   → Server script sends in batches (respecting rate limits + consent)  
-   → Campaign Log rows written  
+Define Segment → Preview member count → Create Campaign
+   → Attach approved template + coupon → Schedule
+   → Server script sends in batches (respecting rate limits + consent)
+   → Campaign Log rows written
    → Redemption tracked via coupon usage on Sales Orders
 ```
 
@@ -332,7 +332,7 @@ Name, phone (primary key), address(es), notes/preferences, order history if avai
 
 2. Delivery note for courier — printed, or view on courier's phone?
 
-\<default: text with all descriptions, address link\> 
+\<default: text with all descriptions, address link\>
 
 3. Delivery fee — flat, by zone, or free above a threshold?
 
@@ -398,4 +398,3 @@ The PoC is successful if, by the end:
 
 
 Each phase leaves a working system. If a later phase stalls, the client still has value from the earlier ones.
-

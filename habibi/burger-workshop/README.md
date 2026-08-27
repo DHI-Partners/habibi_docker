@@ -132,4 +132,3 @@ Company is Habibi Burger / KZT / VAT 12% VAT-inclusive, with 17 menu items, 6 cu
 ✻ Churned for 39m 21s
 
 ※ recap: Goal was a Habibi Burger workshop pack plus a live ERPNext PoC. Both are done: three HTML docs and a build log are in habibi/burger-workshop, and the instance is configured and verified. Next, decide the open items flagged in Stage 11. (disable recaps in /config)
-
