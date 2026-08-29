@@ -22,5 +22,9 @@
   {
     "url": "https://github.com/DHI-Partners/habibi_ui",
     "branch": "main"
+  },
+  {
+    "url": "https://github.com/DHI-Partners/habibi_ai",
+    "branch": "main"
   }
 ]
