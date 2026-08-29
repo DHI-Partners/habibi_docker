@@ -6,7 +6,7 @@
 
 **Architecture:** движок `habibi_ai_engine` (Directus 12 + Postgres 18 + расширение `ai`) — один на инсталляцию, наружу только админка. Frappe-приложение `habibi_ai` ставится тенанту, даёт desk-страницу чата и серверный прокси в движок. Браузер тенанта в Directus не ходит; `tenant` подставляет сервер из `frappe.local.site`.
 
-**Tech Stack:** Directus 12.3.1, Postgres 18, TypeScript (@directus/extensions-sdk 18), Frappe v16 / Python 3.11, Docker Compose, Traefik v3.6, GitHub Actions на `ubuntu-24.04-arm`.
+**Tech Stack:** Directus 12.3.1, Postgres 18, TypeScript (@directus/extensions-sdk 18), Frappe v16 (16.31.0) / Python 3.14, Docker Compose, Traefik v3.6, GitHub Actions на `ubuntu-24.04-arm`.
 
 **Spec:** `habibi/specs/2026-08-29-habibi-ai-design.md`
 
@@ -393,7 +393,7 @@ services:
       POSTGRES_USER: ${AI_DB_USER:-habibi_ai}
       POSTGRES_PASSWORD: ${AI_DB_PASSWORD:?AI_DB_PASSWORD not set}
     volumes:
-      - ai_db_data:/var/lib/postgresql/data
+      - ai_db_data:/var/lib/postgresql
     healthcheck:
       test: ["CMD", "pg_isready", "-U", "${AI_DB_USER:-habibi_ai}", "-d", "${AI_DB_NAME:-habibi_ai}"]
       interval: 10s

@@ -62,7 +62,11 @@ services:
       POSTGRES_USER: ${AI_DB_USER:-habibi_ai}
       POSTGRES_PASSWORD: ${AI_DB_PASSWORD:?AI_DB_PASSWORD not set}
     volumes:
-      - ai_db_data:/var/lib/postgresql/data
+      # Postgres 18 сменил раскладку: один том монтируется на
+      # /var/lib/postgresql, а данные кладутся в подкаталог с номером мажорной
+      # версии. Монтирование на /var/lib/postgresql/data, как было принято до
+      # 18, образ считает чужими данными и стартовать отказывается.
+      - ai_db_data:/var/lib/postgresql
     healthcheck:
       test: ["CMD", "pg_isready", "-U", "${AI_DB_USER:-habibi_ai}", "-d", "${AI_DB_NAME:-habibi_ai}"]
       interval: 10s
