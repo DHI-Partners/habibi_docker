@@ -1,0 +1,44 @@
+# Portainer — веб-панель управления контейнерами этого хоста.
+#
+# priority=100 обязателен: SITES_RULE в compose.https.yaml — это HostRegexp,
+# матчащий любой поддомен первого уровня. Без приоритета Traefik сравнивает
+# роутеры по длине строки правила, а регулярка длиннее простого Host(...), и
+# запрос на portainer.<домен> ушёл бы во frontend, то есть в nginx Frappe, где
+# такого сайта нет. Та же грабля разобрана в шапке compose.distrib.yaml.
+#
+# tls.domains не нужен: сертификат *.<домен> уже заказан роутером frontend-http
+# (compose.wildcard-tls.yaml), а Traefik подбирает сертификат по SNI независимо
+# от того, какой роутер его запросил.
+#
+# networks не задаём: у proxy в этом стеке нет явных networks, он сидит в
+# дефолтной сети проекта и находит сервисы через docker.sock по лейблам.
+#
+# Тег alpine взят мультиархитектурный: прод-сервер Ampere (aarch64), и вариант
+# 2.45.0-alpine собран в том числе под linux/arm64.
+#
+# БЕЗОПАСНОСТЬ. Доступ к /var/run/docker.sock равносилен root на хосте: через
+# него поднимается контейнер с примонтированным / и правами хоста. Сокет
+# смонтирован read-only, но это защищает лишь от правки самого файла, а не от
+# запросов к докеру — read-only здесь не граница безопасности.
+# Неинициализированный Portainer отдаёт создание администратора любому, кто
+# первым откроет страницу, поэтому первый вход делается сразу после запуска.
+#
+# Подключать в COMPOSE_FILE после habibi/overrides/compose.wildcard-tls.yaml.
+
+services:
+  portainer:
+    image: portainer/portainer-ce:2.45.0-alpine
+    restart: ${RESTART_POLICY:-unless-stopped}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - portainer_data:/data
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.portainer-http.rule=Host(`portainer.${BASE_DOMAIN:?BASE_DOMAIN not set}`)
+      - traefik.http.routers.portainer-http.entrypoints=websecure
+      - traefik.http.routers.portainer-http.tls.certresolver=main-resolver
+      - traefik.http.routers.portainer-http.priority=100
+      - traefik.http.services.portainer.loadbalancer.server.port=9000
+
+volumes:
+  portainer_data:
