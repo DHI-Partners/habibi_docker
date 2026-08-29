@@ -84,7 +84,7 @@
 
 services:
   portainer:
-    image: portainer/portainer-ce:2.34.1
+    image: portainer/portainer-ce:2.45.0-alpine
     restart: ${RESTART_POLICY:-unless-stopped}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
