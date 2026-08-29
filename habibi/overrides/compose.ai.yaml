@@ -1,0 +1,74 @@
+# Движок ИИ-модуля: Directus с расширением ai и своя база Postgres.
+#
+# Своя БД, а не общая MariaDB стека: Directus работает с Postgres, схема модуля
+# к схемам сайтов Frappe отношения не имеет, и общий сервер БД связал бы их
+# циклами восстановления из бэкапа — откат сайта тянул бы за собой переписку
+# чат-ботов, и наоборот.
+#
+# Наружу публикуется только админка: тенанты сюда не ходят, их запросы идут
+# через backend Frappe по внутренней сети (приложение habibi_ai). Токен
+# Directus живёт в common_site_config.json на бенче и в браузер не попадает.
+#
+# priority=100 обязателен: SITES_RULE — это HostRegexp, матчащий любой поддомен
+# первого уровня, и без приоритета запрос на ai.<домен> ушёл бы в nginx Frappe.
+# Подробный разбор — в шапке compose.distrib.yaml.
+#
+# tls.domains не нужен: wildcard *.<домен> уже заказан роутером frontend-http.
+#
+# networks не задаём: сервисы попадают в дефолтную сеть проекта, где Traefik
+# находит ai-engine по лейблам, а backend достаёт его по DNS-имени ai-engine.
+#
+# Подключать в COMPOSE_FILE после habibi/overrides/compose.wildcard-tls.yaml.
+
+services:
+  ai-engine:
+    image: ${AI_ENGINE_IMAGE:-ghcr.io/dhi-partners/habibi-ai-engine}:${AI_ENGINE_TAG:?AI_ENGINE_TAG not set}
+    pull_policy: ${PULL_POLICY:-always}
+    restart: ${RESTART_POLICY:-unless-stopped}
+    depends_on:
+      ai-db:
+        condition: service_healthy
+    environment:
+      # KEY и SECRET: openssl rand -hex 32. Смена SECRET разлогинивает всех.
+      KEY: ${DIRECTUS_KEY:?DIRECTUS_KEY not set}
+      SECRET: ${DIRECTUS_SECRET:?DIRECTUS_SECRET not set}
+      ADMIN_EMAIL: ${DIRECTUS_ADMIN_EMAIL:?DIRECTUS_ADMIN_EMAIL not set}
+      ADMIN_PASSWORD: ${DIRECTUS_ADMIN_PASSWORD:?DIRECTUS_ADMIN_PASSWORD not set}
+      # Без PUBLIC_URL Directus строит ссылки в письмах и OAuth от внутреннего адреса.
+      PUBLIC_URL: https://ai.${BASE_DOMAIN:?BASE_DOMAIN not set}
+      DB_CLIENT: pg
+      DB_HOST: ai-db
+      DB_PORT: "5432"
+      DB_DATABASE: ${AI_DB_NAME:-habibi_ai}
+      DB_USER: ${AI_DB_USER:-habibi_ai}
+      DB_PASSWORD: ${AI_DB_PASSWORD:?AI_DB_PASSWORD not set}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+    volumes:
+      - ai_uploads:/directus/uploads
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.ai-http.rule=Host(`ai.${BASE_DOMAIN}`)
+      - traefik.http.routers.ai-http.entrypoints=websecure
+      - traefik.http.routers.ai-http.tls.certresolver=main-resolver
+      - traefik.http.routers.ai-http.priority=100
+      - traefik.http.services.ai.loadbalancer.server.port=8055
+
+  ai-db:
+    image: postgres:18-alpine
+    restart: ${RESTART_POLICY:-unless-stopped}
+    environment:
+      POSTGRES_DB: ${AI_DB_NAME:-habibi_ai}
+      POSTGRES_USER: ${AI_DB_USER:-habibi_ai}
+      POSTGRES_PASSWORD: ${AI_DB_PASSWORD:?AI_DB_PASSWORD not set}
+    volumes:
+      - ai_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "${AI_DB_USER:-habibi_ai}", "-d", "${AI_DB_NAME:-habibi_ai}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  ai_uploads:
+  ai_db_data:
