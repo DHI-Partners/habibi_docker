@@ -57,6 +57,12 @@ services:
   ai-db:
     image: postgres:18-alpine
     restart: ${RESTART_POLICY:-unless-stopped}
+    # Публикация строго на loopback сервера: наружу порт не открывается, из
+    # интернета база по-прежнему недоступна. Смысл — SSH-туннель для разработки
+    # (ssh -L 15432:127.0.0.1:5432 habibi): локально запущенный движок ходит в ту
+    # же базу, что и прод, и источник истины остаётся один.
+    ports:
+      - "127.0.0.1:5432:5432"
     environment:
       POSTGRES_DB: ${AI_DB_NAME:-habibi_ai}
       POSTGRES_USER: ${AI_DB_USER:-habibi_ai}
