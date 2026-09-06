@@ -3,6 +3,10 @@
 
 # Environment Variables
 .env
+# Ручные бэкапы .env рядом с ним же: в них те же боевые секреты, что и в .env,
+# и без этих строк один `git add -A` на сервере отправил бы их в репозиторий.
+.env.bak*
+.env.save
 
 # mounted volume
 sites
