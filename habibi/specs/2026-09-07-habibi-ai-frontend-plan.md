@@ -444,6 +444,14 @@ docker compose -f .devcontainer/docker-compose.yml exec frappe bash -lc '
 непустым `apps/` через `bench init --ignore-exist`. Зафиксируй, что именно
 упало, в этой задаче и правь `dev.sh init` под запасной вариант.
 
+> **Результат проверки (2026-09-07): симлинк работает.** `get_app_path`,
+> импорт пакета и чтение `hooks` — все три разрешаются в хостовый путь
+> `/workspace/repos/habibi_ui/habibi_ui`. Запасной вариант не понадобился.
+>
+> Побочно выяснилось, что `sites/apps.txt` после `bench init` не имеет
+> завершающего перевода строки, и наивный `echo >>` склеивает записи. Учтено
+> в задаче B2.
+
 Убрать проверочный бенч:
 
 ```bash
@@ -544,6 +552,11 @@ cmd_init() {
   for app in "${APPS[@]}"; do
     in_bench "cd /workspace/$BENCH &&
       [ -e apps/$app ] || ln -s /workspace/repos/$app apps/$app
+      # sites/apps.txt после bench init остаётся БЕЗ завершающего перевода
+      # строки, и наивный echo >> склеивает новую запись с предыдущей:
+      # 'frappe' + 'habibi_ui' превращаются в 'frappehabibi_ui', и обе записи
+      # перестают существовать. Проверено на risk-check в задаче B1.
+      [ -s sites/apps.txt ] && [ \"\$(tail -c1 sites/apps.txt)\" != '' ] && echo >> sites/apps.txt
       grep -qx $app sites/apps.txt || echo $app >> sites/apps.txt
       bench pip install -e apps/$app"
   done
