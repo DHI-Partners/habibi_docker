@@ -1010,7 +1010,16 @@ async function bootstrap(container: HTMLElement) {
   );
 }
 
-void bootstrap(container);
+// Отказ бутстрапа не должен оставлять пустой экран: под vite он случается ровно
+// тогда, когда разработчик ещё не вошёл на бенче, и сообщение в консоли найдёт
+// только тот, кто догадался её открыть. Причина пишется прямо на страницу.
+bootstrap(container).catch((error: unknown) => {
+  container.textContent = error instanceof Error ? error.message : String(error);
+  container.setAttribute(
+    "style",
+    "padding:24px;font:14px/1.5 system-ui;color:#b00020;white-space:pre-wrap",
+  );
+});
 ```
 
 - [ ] **Шаг 7: Проверить HMR вживую**
