@@ -750,7 +750,52 @@ esac
 .dev-logs/
 ```
 
-- [ ] **Шаг 3: Поднять среду**
+- [ ] **Шаг 3: Опубликовать порты бенча наружу**
+
+`.devcontainer/docker-compose.yml` не публикует ни одного порта — в файле стоит
+комментарий «Development ports are forwarded by devcontainer.json». Этот проброс
+работает, только когда контейнер открывает VS Code. `habibi/dev.sh` поднимает
+его обычным `docker compose`, поэтому наружу не выходит ничего: ни сайт в
+браузере, ни прокси vite из задачи B4 до бенча не достучатся.
+
+В `devcontainer-example/docker-compose.yml`, сервис `frappe`, добавить:
+
+```yaml
+    ports:
+      # forwardPorts в devcontainer.json срабатывает только под VS Code, а
+      # habibi/dev.sh поднимает контейнер обычным docker compose. Без явной
+      # публикации сайт недоступен с хоста, и прокси vite упирается в пустоту.
+      # Слушаем на loopback, как это делает compose.dev.yaml движка.
+      - "127.0.0.1:8000:8000"
+      - "127.0.0.1:9000:9000"
+```
+
+`.devcontainer/` — копия примера, и `cmd_init` копирует его только когда каталога
+нет. У того, кто уже поднимал среду, копия останется старой и без портов, молча.
+Поэтому в `habibi/dev.sh` в `cmd_init`, сразу после блока копирования, добавить
+предупреждение о расхождении:
+
+```bash
+  # Копия не перезаписывается: .devcontainer в .gitignore именно чтобы его
+  # правили под себя. Но расхождение с примером означает потерянные монты или
+  # порты, и молчать об этом нельзя — цена в полчаса на поиск причины.
+  if ! diff -q devcontainer-example/docker-compose.yml .devcontainer/docker-compose.yml >/dev/null; then
+    echo "!!! .devcontainer/docker-compose.yml разошёлся с devcontainer-example/" >&2
+    echo "    свежие монты и порты могут отсутствовать; сверьте: diff devcontainer-example/docker-compose.yml .devcontainer/docker-compose.yml" >&2
+  fi
+```
+
+Затем пересобрать копию и пересоздать контейнеры, чтобы порты вступили в силу:
+
+```bash
+cp devcontainer-example/docker-compose.yml .devcontainer/docker-compose.yml
+docker compose -f .devcontainer/docker-compose.yml up -d
+docker compose -f .devcontainer/docker-compose.yml ps --format '{{.Service}}\t{{.Ports}}'
+```
+
+Ожидается: у `frappe` в колонке портов `127.0.0.1:8000->8000/tcp` и `9000->9000/tcp`.
+
+- [ ] **Шаг 4: Поднять среду**
 
 ```bash
 ./habibi/dev.sh up
@@ -758,17 +803,22 @@ esac
 
 Ожидается: блок «готово» с тремя адресами, без ошибок.
 
-- [ ] **Шаг 4: Проверить, что все процессы живы**
+- [ ] **Шаг 5: Проверить, что все процессы живы**
 
 ```bash
-curl -s -o /dev/null -w '%{http_code}\n' http://localhost:8055/server/health
+# /server/health у Directus закрыт настройками по умолчанию и отвечает 403 —
+# живость проверяем /server/ping.
+curl -s -o /dev/null -w '%{http_code}\n' http://localhost:8055/server/ping
 curl -s -o /dev/null -w '%{http_code}\n' http://localhost:8000/api/method/ping
 tail -3 .dev-logs/вотчер.log
 ```
 
 Ожидается: `200`, `200`, и в логе вотчера строка о собранном расширении.
 
-- [ ] **Шаг 5: Проверить остановку**
+Второй запрос проходит только после шага 3: без публикации портов бенч с хоста
+недостижим.
+
+- [ ] **Шаг 6: Проверить остановку**
 
 ```bash
 ./habibi/dev.sh down
@@ -777,10 +827,10 @@ docker ps --format '{{.Names}}' | grep -c 'frappe\|ai-engine' || true
 
 Ожидается: `0`.
 
-- [ ] **Шаг 6: Коммит**
+- [ ] **Шаг 7: Коммит**
 
 ```bash
-git add habibi/dev.sh .gitignore
+git add habibi/dev.sh .gitignore devcontainer-example/docker-compose.yml
 git commit -m "feat(dev): dev.sh up, down, logs — пять процессов одной командой"
 ```
 
