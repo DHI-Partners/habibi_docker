@@ -1528,6 +1528,23 @@ git commit -m "refactor: чат уезжает в habibi_ui, desk-страниц
 		result = me()
 		keys = [m["key"] for m in result["modules"]]
 		self.assertEqual("habibi_ai" in keys, "habibi_ai" in frappe.get_installed_apps())
+
+	def test_ии_модуль_скрыт_когда_не_установлен(self):
+		# Обратное направление проверяется подменой списка приложений: на этом
+		# сайте habibi_ai установлен, и без подмены случай недостижим. Без этого
+		# теста регрессия, в которой _modules() перестаёт фильтровать вообще,
+		# прошла бы незамеченной — обе стороны равенства выше уехали бы в True
+		# одновременно. Скрытность раздела — то, на чём держится выборочная
+		# выдача модуля тенантам, поэтому проверяется отдельно.
+		with patch("frappe.get_installed_apps", return_value=["frappe", "erpnext"]):
+			keys = [m["key"] for m in me()["modules"]]
+		self.assertNotIn("habibi_ai", keys)
+```
+
+Импорт `patch` дописывается к шапке файла:
+
+```python
+from unittest.mock import patch
 ```
 
 - [ ] **Шаг 2: Убедиться, что тест падает**
