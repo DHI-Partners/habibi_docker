@@ -44,6 +44,15 @@ cmd_init() {
     cp -R devcontainer-example .devcontainer
     echo "==> .devcontainer собран из примера"
   fi
+
+  # Копия не перезаписывается: .devcontainer в .gitignore именно чтобы его
+  # правили под себя. Но расхождение с примером означает потерянные монты или
+  # порты, и молчать об этом нельзя — цена в полчаса на поиск причины.
+  if ! diff -q devcontainer-example/docker-compose.yml .devcontainer/docker-compose.yml >/dev/null; then
+    echo "!!! .devcontainer/docker-compose.yml разошёлся с devcontainer-example/" >&2
+    echo "    свежие монты и порты могут отсутствовать; сверьте: diff devcontainer-example/docker-compose.yml .devcontainer/docker-compose.yml" >&2
+  fi
+
   $DC up -d
 
   if [ ! -d "$BENCH" ]; then

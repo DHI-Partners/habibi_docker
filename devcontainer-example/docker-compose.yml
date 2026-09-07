@@ -59,7 +59,13 @@ services:
       # Enable if you require git cloning
       # - ${HOME}/.ssh:/home/frappe/.ssh
     working_dir: /workspace/development
-    # Development ports are forwarded by devcontainer.json.
+    ports:
+      # forwardPorts в devcontainer.json срабатывает только под VS Code, а
+      # habibi/dev.sh поднимает контейнер обычным docker compose. Без явной
+      # публикации сайт недоступен с хоста, и прокси vite упирается в пустоту.
+      # Слушаем на loopback, как это делает compose.dev.yaml движка.
+      - "127.0.0.1:8000:8000"
+      - "127.0.0.1:9000:9000"
   # enable the below service if you need Cypress UI Tests to be executed
   # Before enabling ensure install_x11_deps.sh has been executed and display variable is exported.
   # Run install_x11_deps.sh again if DISPLAY is not set
