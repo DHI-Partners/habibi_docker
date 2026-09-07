@@ -5,6 +5,7 @@
 #   ./habibi/dev.sh up     — поднять всё
 #   ./habibi/dev.sh down   — погасить
 #   ./habibi/dev.sh logs   — логи процесса
+#   ./habibi/dev.sh check  — диагностика цепочки браузер-бенч-движок-БД по звеньям
 #
 # Спек: habibi/specs/2026-09-07-habibi-ai-frontend-design.md
 #
@@ -19,6 +20,11 @@ BENCH=development/frappe-bench
 DC="docker compose -f .devcontainer/docker-compose.yml"
 APPS=(habibi_ui habibi_ai)
 LOGS=.dev-logs
+
+# Порт SSH-туннеля к прод-базе. Значение задаёт и владеет им
+# ../habibi_ai_engine/dev.sh (TUNNEL_PORT там же) — здесь только читаем,
+# чтобы cmd_check могла проверить туннель, не трогая чужой скрипт.
+TUNNEL_PORT=15432
 
 # Соседние репозитории, без которых dev.sh не работает целиком. Шире APPS:
 # habibi_ai_engine cmd_up вызывает напрямую (../habibi_ai_engine/dev.sh up),
@@ -221,10 +227,162 @@ cmd_logs() {
   esac
 }
 
+# Инцидент 2026-09-07: туннель к прод-базе тихо умер, а с ним не умер ни один
+# видимый человеку слой. Движок отвечал 500 с текстом Directus "An unexpected
+# error occurred", habibi_ai добросовестно ретранслировал это на экран, и
+# ни интерфейс, ни сообщение движка не указывали на причину — та нашлась
+# только в `docker compose logs` как ECONNREFUSED к туннелю. cmd_check
+# проверяет всю цепочку браузер -> бенч -> habibi_ai -> движок -> туннель ->
+# прод-БД звено за звеном и на каждом обрыве говорит, что запустить.
+#
+# ok()/bad() только печатают и копят $failed — они не решают, идти ли
+# дальше: каждая проверка ниже обёрнута в свой if. Голая команда с ожидаемо
+# ненулевым кодом под set -e уронила бы весь check на первом же FAIL, а смысл
+# команды — показать все звенья разом, а не остановиться на первом обрыве.
+cmd_check() {
+  local failed=0
+
+  ok()  { echo "OK   $1"; }
+  bad() {
+    echo "FAIL $1"
+    [ -n "${2:-}" ] && echo "     чинить: $2"
+    failed=1
+  }
+
+  # 1. Контейнеры девконтейнера — без них дальнейшие проверки бессмысленны.
+  # Сравниваем полный список сервисов из compose с реально запущенными, а не
+  # просто "хоть что-то поднято": частично упавший devcontainer (например,
+  # умер redis) даёт обманчиво зелёную картину, если проверять только факт
+  # существования процессов.
+  local want have missing
+  want=$($DC config --services 2>/dev/null || true)
+  have=$($DC ps --status running --services 2>/dev/null || true)
+  missing=$(comm -23 <(sort <<<"$want") <(sort <<<"$have") 2>/dev/null | tr '\n' ' ')
+  missing=${missing% }
+  if [ -z "$want" ]; then
+    bad "девконтейнер: .devcontainer не поднят или не инициализирован" "./habibi/dev.sh init && ./habibi/dev.sh up"
+  elif [ -n "$missing" ]; then
+    bad "девконтейнер: не подняты: $missing" "./habibi/dev.sh up"
+  else
+    ok "девконтейнер: контейнеры подняты"
+  fi
+
+  # 2. Движок жив и отвечает по HTTP. /server/health у Directus закрыт
+  # настройками по умолчанию и всегда отвечает 403 — это не признак поломки,
+  # см. habibi/specs/2026-09-07-habibi-ai-frontend-plan.md. Живость проверяем
+  # /server/ping, который не трогает базу и падает только если сам процесс
+  # движка не поднялся.
+  local code
+  if ! code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 3 http://localhost:8055/server/ping 2>/dev/null); then
+    code=""
+  fi
+  if [ "$code" = "200" ]; then
+    ok "движок: /server/ping -> 200"
+  else
+    bad "движок: /server/ping -> ${code:-нет ответа}" "(cd ../habibi_ai_engine && ./dev.sh up)"
+  fi
+
+  # 3. Туннель реально пробрасывает трафик. Ровно это и сломалось в инциденте:
+  # процесс ssh мог остаться в списке (или не остаться вовсе), а форвард —
+  # не работать. Проверки "процесс существует" или "порт открыт" здесь
+  # недостаточно: TCP-хендшейк на мёртвом форварде иногда проходит, трафик
+  # дальше него — нет. Поэтому шлём настоящий байт протокола Postgres
+  # (SSLRequest) в порт туннеля и ждём ответ 'S'/'N' от реальной базы на
+  # другом конце.
+  if tunnel_probe; then
+    ok "туннель 127.0.0.1:$TUNNEL_PORT: пробрасывает трафик"
+  else
+    bad "туннель 127.0.0.1:$TUNNEL_PORT: не отвечает" "(cd ../habibi_ai_engine && ./dev.sh up)"
+  fi
+
+  # 4. Движок реально достаёт данные из БД через туннель, а не просто жив.
+  # /server/ping ничего не говорит о базе; /server/info — говорит: он читает
+  # запись из directus_settings (ServerService.serverInfo -> SettingsService.
+  # readSingleton), то есть требует настоящего запроса к Postgres, и доступен
+  # без токена. Именно так и выглядела авария: /server/ping отвечал бы 200,
+  # а любой запрос с обращением к базе — 500 с текстом Directus "An
+  # unexpected error occurred".
+  if ! code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 5 http://localhost:8055/server/info 2>/dev/null); then
+    code=""
+  fi
+  if [ "$code" = "200" ]; then
+    ok "движок -> база: /server/info -> 200"
+  else
+    bad "движок -> база: /server/info -> ${code:-нет ответа} (звено 2 и 3 зелёные, а это красное — именно так выглядела авария 2026-09-07)" \
+        "(cd ../habibi_ai_engine && ./dev.sh up); если не помогло — docker compose -f ../habibi_ai_engine/compose.dev.yaml logs ai-engine"
+  fi
+
+  # 5. Бенч отвечает на :8000.
+  if ! code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 3 http://localhost:8000/api/method/ping 2>/dev/null); then
+    code=""
+  fi
+  if [ "$code" = "200" ]; then
+    ok "бенч: /api/method/ping -> 200"
+  else
+    bad "бенч: /api/method/ping -> ${code:-нет ответа}" "./habibi/dev.sh up"
+  fi
+
+  # 6. Конфиг бенча указывает на движок. Значения лежат в common_site_config.
+  # json — сам set-config -g пишет туда же (см. подсказку в cmd_init).
+  # Токен никогда не печатаем — только факт, что ключ присутствует.
+  local url_line url token_ok=0 token_msg="не задан"
+  if url_line=$(in_bench "grep habibi_ai_engine_url /workspace/$BENCH/sites/common_site_config.json" 2>/dev/null); then
+    url=$(awk -F'"' '{print $4}' <<<"$url_line")
+  else
+    url=""
+  fi
+  if in_bench "grep -q habibi_ai_engine_token /workspace/$BENCH/sites/common_site_config.json" 2>/dev/null; then
+    token_ok=1
+    token_msg=задан
+  fi
+  if [ -n "$url" ] && [ "$token_ok" = 1 ]; then
+    ok "конфиг бенча: habibi_ai_engine_url=$url, токен задан"
+  else
+    bad "конфиг бенча: url=${url:-не задан}, токен $token_msg" \
+        "$DC exec -T frappe bash -lc 'cd /workspace/$BENCH && bench --site $SITE set-config -g habibi_ai_engine_url http://host.docker.internal:8055 && bench --site $SITE set-config -g habibi_ai_engine_token <токен>'"
+  fi
+
+  # 7. Vite отвечает на :5173.
+  if ! code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 3 http://localhost:5173/ui 2>/dev/null); then
+    code=""
+  fi
+  if [ "$code" = "200" ]; then
+    ok "vite: /ui -> 200"
+  else
+    bad "vite: /ui -> ${code:-нет ответа}" "./habibi/dev.sh up"
+  fi
+
+  [ "$failed" = 0 ]
+}
+
+# Живость ssh-процесса ничего не говорит о том, ходит ли трафик — это и есть
+# суть проверки 3 в cmd_check. Шлём Postgres SSLRequest (8 байт: длина=8,
+# код=80877103) в порт туннеля и ждём один байт ответа ('S' — есть TLS,
+# 'N' — нет): ответ приходит только если байты реально дошли до Postgres на
+# другом конце и вернулись, то есть форвард жив, а не просто открыт локально.
+#
+# Ошибки exec/read у /dev/tcp попадают в стандартный вывод bash, а не в код
+# возврата команды сам по себе — группируем каждый шаг в {...}, чтобы
+# 2>/dev/null подавлял их, и на любой неудаче явно возвращаем 1, не давая
+# set -e увидеть непроверенный ненулевой код.
+tunnel_probe() {
+  local byte
+  { exec 3<>"/dev/tcp/127.0.0.1/$TUNNEL_PORT"; } 2>/dev/null || return 1
+  { printf '\x00\x00\x00\x08\x04\xd2\x16\x2f' >&3; } 2>/dev/null || { exec 3<&- 3>&- 2>/dev/null; return 1; }
+  if read -r -t 3 -n 1 -u 3 byte 2>/dev/null; then
+    exec 3<&- 3>&- 2>/dev/null
+    [ -n "$byte" ]
+  else
+    exec 3<&- 3>&- 2>/dev/null
+    return 1
+  fi
+}
+
 case "${1:-up}" in
   init)   cmd_init ;;
   up)     cmd_up ;;
   down)   cmd_down ;;
   logs)   shift; cmd_logs "$@" ;;
-  *)      echo "usage: $0 {init|up|down|logs}" >&2; exit 1 ;;
+  check)  cmd_check ;;
+  *)      echo "usage: $0 {init|up|down|logs|check}" >&2; exit 1 ;;
 esac
