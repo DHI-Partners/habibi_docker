@@ -116,7 +116,75 @@ cmd_init() {
 HINT
 }
 
+ENGINE=../habibi_ai_engine
+UI=../habibi_ui
+
+# Фоновый процесс с логом и pid-файлом. Вотчер расширения и vite держат
+# терминал занятым, а процессов здесь пять — пять окон это ровно то, от чего
+# скрипт должен избавлять.
+background() {
+  local name=$1 dir=$2 cmd=$3
+  if [ -f "$LOGS/$name.pid" ] && kill -0 "$(cat "$LOGS/$name.pid")" 2>/dev/null; then
+    echo "==> $name уже запущен (pid $(cat "$LOGS/$name.pid"))"
+    return
+  fi
+  mkdir -p "$LOGS"
+  (cd "$dir" && exec bash -lc "$cmd") > "$LOGS/$name.log" 2>&1 &
+  echo $! > "$LOGS/$name.pid"
+  echo "==> $name запущен (pid $!), лог $LOGS/$name.log"
+}
+
+stop_background() {
+  local name=$1
+  [ -f "$LOGS/$name.pid" ] || return 0
+  kill "$(cat "$LOGS/$name.pid")" 2>/dev/null || true
+  rm -f "$LOGS/$name.pid"
+  echo "==> $name остановлен"
+}
+
+cmd_up() {
+  need_siblings
+  [ -d "$BENCH" ] || { echo "бенча нет — сначала ./habibi/dev.sh init" >&2; exit 1; }
+
+  # Движок поднимает свой скрипт: у него своя логика туннеля и сборки .env.dev
+  # с сервера, второй копии ей не нужно.
+  (cd "$ENGINE" && ./dev.sh up)
+
+  $DC up -d
+  background вотчер "$ENGINE/extensions/ai" "npm run dev"
+  background бенч "." "$DC exec -T frappe bash -lc 'cd /workspace/$BENCH && bench start'"
+  background vite "$UI" "yarn dev"
+
+  cat <<'READY'
+
+==> готово:
+    фронт с HMR   http://localhost:5173/ui
+    бенч          http://localhost:8000
+    админка движка http://localhost:8055
+READY
+}
+
+cmd_down() {
+  stop_background vite
+  stop_background бенч
+  stop_background вотчер
+  $DC down
+  (cd "$ENGINE" && ./dev.sh down)
+}
+
+cmd_logs() {
+  local name=${1:-}
+  case "$name" in
+    движок) (cd "$ENGINE" && ./dev.sh logs) ;;
+    вотчер|бенч|vite) tail -f "$LOGS/$name.log" ;;
+    *) echo "usage: $0 logs {движок|вотчер|бенч|vite}" >&2; exit 1 ;;
+  esac
+}
+
 case "${1:-up}" in
   init)   cmd_init ;;
-  *)      echo "usage: $0 {init}" >&2; exit 1 ;;
+  up)     cmd_up ;;
+  down)   cmd_down ;;
+  logs)   shift; cmd_logs "$@" ;;
+  *)      echo "usage: $0 {init|up|down|logs}" >&2; exit 1 ;;
 esac

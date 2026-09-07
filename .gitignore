@@ -39,3 +39,6 @@ node_modules
 # VitePress
 **/.vitepress/dist
 **/.vitepress/cache
+
+# Логи фоновых процессов локальной среды (habibi/dev.sh)
+.dev-logs/
