@@ -95,12 +95,6 @@ cmd_init() {
       bench new-site $SITE --mariadb-user-host-login-scope='%' \
         --db-root-password 123 --admin-password admin \
         --install-app erpnext --install-app habibi_ui --install-app habibi_ai"
-    # allow_tests рядом с developer_mode: обе настройки говорят одно и то же —
-    # это сайт для разработки. Без allow_tests `bench run-tests` отказывается
-    # работать, и каждый тестовый шаг следующих фаз падает на пустом месте.
-    in_bench "cd /workspace/$BENCH &&
-      bench --site $SITE set-config developer_mode 1 &&
-      bench --site $SITE set-config allow_tests true"
     echo "==> сайт $SITE создан"
   fi
 
@@ -117,6 +111,18 @@ cmd_init() {
       bench --site $SITE list-apps | grep -q \"^$app \" ||
       bench --site $SITE install-app $app"
   done
+
+  # developer_mode и allow_tests говорят одно и то же — это сайт для
+  # разработки. Без allow_tests `bench run-tests` отказывается работать, и
+  # каждый тестовый шаг следующих фаз падает на пустом месте.
+  #
+  # Снаружи блока создания сайта, по той же причине, что и default_site рядом:
+  # внутри настройка не применилась бы к сайту, заведённому раньше этой правки,
+  # и человек чинил бы среду руками. init сходится к нужному состоянию, а не
+  # доверяет защите. set-config идемпотентен.
+  in_bench "cd /workspace/$BENCH &&
+    bench --site $SITE set-config developer_mode 1 &&
+    bench --site $SITE set-config allow_tests true"
 
   # Frappe выбирает сайт по заголовку Host, а браузер и прокси vite шлют
   # Host: localhost. Без этих двух ключей бенч отвечает 404 "localhost does
