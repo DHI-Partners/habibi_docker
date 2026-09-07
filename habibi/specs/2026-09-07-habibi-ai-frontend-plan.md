@@ -1850,8 +1850,31 @@ const TITLES: Record<string, string> = {
  * обладателю роли Habibi AI Debug. Своего переключателя здесь нет намеренно:
  * право решается на сервере, а не спрятанной кнопкой.
  */
+/**
+ * JSON.stringify бросает на циклах и BigInt. Шаги приходит из соседнего
+ * репозитория и будут пополняться, а исключение при рендере уронило бы всю
+ * панель — то есть ровно тот инструмент, которым разбираются, что пошло не
+ * так. Показать нечитаемое лучше, чем не показать ничего.
+ */
+function toText(data: Record<string, unknown>): string {
+  try {
+    return JSON.stringify(data, null, 2);
+  } catch (error) {
+    return `не удалось показать: ${error instanceof Error ? error.message : String(error)}`;
+  }
+}
+
 export function TracePanel({ steps }: { steps: TraceStep[] }) {
   const [open, setOpen] = useState<string | null>("completion");
+
+  // Новая трассировка — новый разбор, начинать его надо с начала. Состояние
+  // сбрасывается здесь, а не ключом от вызывающего: оно принадлежит панели, и
+  // требовать от каждого места вызова помнить про key — ловушка.
+  const [shown, setShown] = useState(steps);
+  if (shown !== steps) {
+    setShown(steps);
+    setOpen("completion");
+  }
 
   return (
     <aside className="w-96 shrink-0 overflow-y-auto rounded-2xl border border-border bg-card p-3 text-sm">
@@ -1868,7 +1891,7 @@ export function TracePanel({ steps }: { steps: TraceStep[] }) {
             // Перенос по словам обязателен: в completion лежит system prompt
             // целиком, и без него панель уезжает горизонтальной прокруткой.
             <pre className="mt-1 rounded-lg bg-muted p-2 text-xs break-words whitespace-pre-wrap">
-              {JSON.stringify(step.data, null, 2)}
+              {toText(step.data)}
             </pre>
           )}
         </div>
