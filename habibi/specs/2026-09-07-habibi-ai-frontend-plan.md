@@ -1202,7 +1202,55 @@ def send_message(chat_id, message, bot_id=None):
 	return call(get_client().send_message, int(chat_id), message, bot_id, debug=debug)
 ```
 
-- [ ] **Шаг 6: Роль приезжает фикстурой**
+- [ ] **Шаг 6: Покрыть тестом сам гейт**
+
+`test_engine.py` проверяет, что клиент кладёт `debug` в тело запроса, когда его
+об этом просят. Но решение «просить или нет» принимает `api.send_message`, и
+именно оно — граница безопасности: ошибка здесь означает чужой system prompt в
+ответе тенанту. Без теста эта строка защищена только внимательностью.
+
+Создать `habibi_ai/tests/test_api.py`:
+
+```python
+"""Тесты гейта на трассировку.
+
+В отличие от test_engine.py, этот модуль frappe импортирует — api.py без него
+не существует. Сайт при этом не нужен: и роли, и клиент движка подменяются,
+к базе обращений нет. Проверяется ровно одно решение — просить трассировку
+или нет, — и оно единственное, чья ошибка отдаёт тенанту чужой system prompt.
+"""
+
+import unittest
+from unittest.mock import Mock, patch
+
+from habibi_ai import api
+
+
+class TestГейтТрассировки(unittest.TestCase):
+	def _вызвать_с_ролями(self, roles):
+		client = Mock()
+		client.send_message = Mock(return_value={"response": "ок"})
+		with patch("frappe.get_roles", return_value=roles):
+			with patch("habibi_ai.api.get_client", return_value=client):
+				api.send_message(1, "привет")
+		return client.send_message.call_args
+
+	def test_без_роли_трассировка_не_запрашивается(self):
+		args = self._вызвать_с_ролями(["System Manager"])
+		self.assertFalse(args.kwargs["debug"])
+
+	def test_с_ролью_трассировка_запрашивается(self):
+		args = self._вызвать_с_ролями(["System Manager", api.DEBUG_ROLE])
+		self.assertTrue(args.kwargs["debug"])
+
+	def test_роль_не_подбирается_по_подстроке(self):
+		# Проверка вхождения в список, а не поиск подстроки: роль с похожим
+		# именем не должна открывать доступ.
+		args = self._вызвать_с_ролями(["Habibi AI Debugging Assistant"])
+		self.assertFalse(args.kwargs["debug"])
+```
+
+- [ ] **Шаг 7: Роль приезжает фикстурой**
 
 Создать `habibi_ai/fixtures/role.json`:
 
@@ -1228,7 +1276,7 @@ fixtures = [
 ]
 ```
 
-- [ ] **Шаг 7: Проверить на сайте**
+- [ ] **Шаг 8: Проверить на сайте**
 
 ```bash
 docker compose -f ../habibi_docker/.devcontainer/docker-compose.yml exec -T frappe bash -lc \
@@ -1238,11 +1286,12 @@ docker compose -f ../habibi_docker/.devcontainer/docker-compose.yml exec -T frap
 
 Ожидается: список с одной записью.
 
-- [ ] **Шаг 8: Коммит**
+- [ ] **Шаг 9: Коммит**
 
 ```bash
 git add habibi_ai/engine.py habibi_ai/api.py habibi_ai/hooks.py \
-        habibi_ai/fixtures/role.json habibi_ai/tests/test_engine.py
+        habibi_ai/fixtures/role.json habibi_ai/tests/test_engine.py \
+        habibi_ai/tests/test_api.py
 git commit -m "feat: трассировка обработки по роли Habibi AI Debug"
 ```
 
