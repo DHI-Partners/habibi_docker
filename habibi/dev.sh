@@ -95,7 +95,12 @@ cmd_init() {
       bench new-site $SITE --mariadb-user-host-login-scope='%' \
         --db-root-password 123 --admin-password admin \
         --install-app erpnext --install-app habibi_ui --install-app habibi_ai"
-    in_bench "cd /workspace/$BENCH && bench --site $SITE set-config developer_mode 1"
+    # allow_tests рядом с developer_mode: обе настройки говорят одно и то же —
+    # это сайт для разработки. Без allow_tests `bench run-tests` отказывается
+    # работать, и каждый тестовый шаг следующих фаз падает на пустом месте.
+    in_bench "cd /workspace/$BENCH &&
+      bench --site $SITE set-config developer_mode 1 &&
+      bench --site $SITE set-config allow_tests true"
     echo "==> сайт $SITE создан"
   fi
 
