@@ -562,7 +562,11 @@ cmd_init() {
   done
   echo "==> приложения подключены"
 
-  if ! in_bench "cd /workspace/$BENCH && bench list-sites" | grep -qx "$SITE"; then
+  # Наличие сайта проверяется файлом, а не разбором `bench list-sites`: та
+  # печатает человекочитаемое "Available sites:" и имя с отступом, то есть её
+  # вывод — не интерфейс. Проверка по нему молча ломалась бы при любой правке
+  # форматирования, а сломавшись — уводила бы init в повторный new-site.
+  if ! in_bench "test -f /workspace/$BENCH/sites/$SITE/site_config.json"; then
     in_bench "cd /workspace/$BENCH &&
       bench new-site $SITE --mariadb-user-host-login-scope='%' \
         --db-root-password 123 --admin-password admin \
