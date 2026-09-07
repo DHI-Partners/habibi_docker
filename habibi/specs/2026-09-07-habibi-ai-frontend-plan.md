@@ -1968,7 +1968,11 @@ import type { TraceStep } from "./types";
 export function ChatPage() {
   const [chatId, setChatId] = useState<number | null>(null);
   const [draft, setDraft] = useState("");
-  const [trace, setTrace] = useState<TraceStep[] | null>(null);
+  // Трассировка носит с собой номер чата, из которого её получили. Пока запрос
+  // летит, пользователь успевает переключиться, и ответ пришёл бы к чужой
+  // переписке. Хранить голый массив значило бы показать разбор одного диалога
+  // рядом с другим.
+  const [trace, setTrace] = useState<{ chatId: number; steps: TraceStep[] } | null>(null);
 
   const bots = useBots();
   const chats = useChats();
@@ -1976,23 +1980,32 @@ export function ChatPage() {
   const createChat = useCreateChat();
   const send = useSendMessage(chatId);
 
+  /** Переключение чата: состояние отправки принадлежало прежнему. */
+  function open(id: number | null) {
+    setChatId(id);
+    setTrace(null);
+    // Без reset прежние isPending и error остаются висеть и приписываются
+    // чату, в который ничего не отправляли: экземпляр мутации один на экран,
+    // по чатам он не разделён.
+    send.reset();
+  }
+
   function start() {
     const bot = bots.data?.[0];
     if (!bot) return;
-    createChat.mutate(bot.id, {
-      onSuccess: (created) => {
-        setChatId(created.id);
-        setTrace(null);
-      },
-    });
+    createChat.mutate(bot.id, { onSuccess: (created) => open(created.id) });
   }
 
   function submit() {
     const text = draft.trim();
     if (!text || chatId === null) return;
+    const sentFrom = chatId;
     setDraft("");
-    // Трассировка приходит только с ролью, поэтому null — норма, а не ошибка.
-    send.mutate(text, { onSuccess: (result) => setTrace(result.debug ?? null) });
+    // Трассировка приходит только с ролью, поэтому её отсутствие — норма.
+    send.mutate(text, {
+      onSuccess: (result) =>
+        setTrace(result.debug ? { chatId: sentFrom, steps: result.debug } : null),
+    });
   }
 
   return (
@@ -2005,10 +2018,7 @@ export function ChatPage() {
         {chats.data?.map((item) => (
           <button
             key={item.id}
-            onClick={() => {
-              setChatId(item.id);
-              setTrace(null);
-            }}
+            onClick={() => open(item.id)}
             className={`block w-full rounded-lg p-2 text-left text-sm ${
               item.id === chatId ? "bg-accent" : "hover:bg-muted"
             }`}
@@ -2058,7 +2068,9 @@ export function ChatPage() {
         </form>
       </section>
 
-      {trace && <TracePanel steps={trace} />}
+      {/* Показываем только разбор текущего чата: ответ мог прийти после того,
+          как пользователь ушёл в другой диалог. */}
+      {trace && trace.chatId === chatId && <TracePanel steps={trace.steps} />}
     </div>
   );
 }
