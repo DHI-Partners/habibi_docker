@@ -49,6 +49,13 @@ services:
       - SHELL=/bin/bash
     volumes:
       - ..:/workspace:cached
+      # Соседние репозитории лежат рядом с habibi_docker на хосте, а внутрь
+      # смонтирован только он сам. Без этих строк bench их не видит и ставить
+      # приложения не из чего. Монт идёт в repos/, а не в apps/: bench init
+      # создаёт frappe-bench с нуля и непустой apps/ его смущает — симлинки
+      # навешиваются после, в habibi/dev.sh init.
+      - ../../habibi_ui:/workspace/repos/habibi_ui:cached
+      - ../../habibi_ai:/workspace/repos/habibi_ai:cached
       # Enable if you require git cloning
       # - ${HOME}/.ssh:/home/frappe/.ssh
     working_dir: /workspace/development
