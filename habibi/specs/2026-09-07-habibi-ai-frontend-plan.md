@@ -1735,8 +1735,15 @@ export function useChats() {
 export function useChat(chatId: number | null) {
   return useQuery({
     queryKey: ["ai", "chat", chatId],
+    // title и preview здесь не приходят: они вычисляются из сообщений внутри
+    // list_chats, а get_chat отдаёт строку customer_chats как есть — колонки
+    // под них в схеме нет вовсе. Обещать их в типе значило бы заглушить
+    // компилятор ровно там, где в рантайме окажется undefined.
     queryFn: () =>
-      call<{ chat: ChatRef; messages: Message[] }>("habibi_ai.api.get_chat", { chat_id: chatId }),
+      call<{ chat: Omit<ChatRef, "title" | "preview">; messages: Message[] }>(
+        "habibi_ai.api.get_chat",
+        { chat_id: chatId },
+      ),
     enabled: chatId !== null,
   });
 }
