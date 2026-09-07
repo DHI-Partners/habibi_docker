@@ -986,7 +986,9 @@ def boot() -> dict:
 В `frontend/src/main.tsx` заменить блок рендера на:
 
 ```tsx
-async function bootstrap() {
+// container принимается параметром, а не берётся из внешней области: TS не
+// протаскивает сужение "не null" из проверки выше в замыкание async-функции.
+async function bootstrap(container: HTMLElement) {
   // В проде window.habibi кладёт www/ui.html. Под vite разметку отдаёт vite,
   // и boot приходится добирать запросом.
   if (!window.habibi) {
@@ -1008,7 +1010,7 @@ async function bootstrap() {
   );
 }
 
-void bootstrap();
+void bootstrap(container);
 ```
 
 - [ ] **Шаг 7: Проверить HMR вживую**
@@ -1025,6 +1027,60 @@ void bootstrap();
 git add habibi_ui/api/v1/session.py habibi_ui/tests/test_session.py \
         frontend/vite.config.ts frontend/src/main.tsx
 git commit -m "feat(dev): HMR фронта против локального бенча"
+```
+
+---
+
+### Задача B5: Тесты должны запускаться на локальном сайте
+
+**Файлы:**
+- Изменить: `habibi/dev.sh` (репозиторий `habibi_docker`)
+
+Обнаружено при выполнении B4: `bench run-tests` на сайте отказывается работать,
+пока не выставлен `allow_tests`. В B4 его пришлось выставить руками, а в
+`dev.sh init` его нет — значит на чистой машине каждый тестовый шаг фаз C и D
+упадёт на пустом месте.
+
+Ставится рядом с `developer_mode`, тем же вызовом: обе настройки означают одно
+и то же — «это сайт для разработки».
+
+- [ ] **Шаг 1: Добавить настройку**
+
+В `habibi/dev.sh`, в `cmd_init`, заменить строку:
+
+```bash
+    in_bench "cd /workspace/$BENCH && bench --site $SITE set-config developer_mode 1"
+```
+
+на:
+
+```bash
+    # allow_tests рядом с developer_mode: обе настройки говорят одно и то же —
+    # это сайт для разработки. Без allow_tests `bench run-tests` отказывается
+    # работать, и каждый тестовый шаг следующих фаз падает на пустом месте.
+    in_bench "cd /workspace/$BENCH &&
+      bench --site $SITE set-config developer_mode 1 &&
+      bench --site $SITE set-config allow_tests true"
+```
+
+- [ ] **Шаг 2: Проверить**
+
+Настройка стоит внутри блока создания сайта, а сайт уже создан, поэтому на
+существующей среде она не выполнится — это ожидаемо. Проверяется чтением:
+
+```bash
+docker compose -f .devcontainer/docker-compose.yml exec -T frappe bash -lc \
+  "cd /workspace/development/frappe-bench && bench --site dev.localhost execute frappe.client.get_value --kwargs \"{'doctype':'DocType','filters':{'name':'User'},'fieldname':'name'}\"" >/dev/null && echo "сайт отвечает"
+grep -n "allow_tests" habibi/dev.sh
+```
+
+Ожидается: строка `allow_tests` присутствует в скрипте.
+
+- [ ] **Шаг 3: Коммит**
+
+```bash
+git add habibi/dev.sh
+git commit -m "feat(dev): allow_tests на локальном сайте, иначе run-tests не стартует"
 ```
 
 ---
