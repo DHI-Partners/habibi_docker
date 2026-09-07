@@ -320,7 +320,7 @@ curl -s -X POST http://localhost:8055/ai-process-message/ \
 
 Ожидается: `false`.
 
-- [ ] **Шаг 7: Коммит**
+- [ ] **Шаг 8: Коммит**
 
 ```bash
 git add extensions/ai/src/process-message/types.ts \
@@ -1501,7 +1501,16 @@ git commit -m "feat: список чатов с заголовком и прев
 git rm -r habibi_ai/habibi_ai/page/ai_chat
 ```
 
-- [ ] **Шаг 2: Убрать shortcut из workspace**
+- [ ] **Шаг 2: Убрать пункт из Workspace Sidebar**
+
+Цепочка длиннее, чем кажется: `Desktop Icon` ссылается на **Workspace Sidebar**,
+а не на Workspace — это прямо написано в докстринге `setup.py`. В
+`habibi_ai/workspace_sidebar/habibi_ai.json` лежит пункт с `link_to: "ai-chat"`,
+и без его удаления в цепочке остаётся висячая ссылка на несуществующую страницу.
+
+Удалить пункт, ссылающийся на `ai-chat`.
+
+- [ ] **Шаг 3: Убрать shortcut из workspace**
 
 В `habibi_ai/habibi_ai/workspace/habibi_ai/habibi_ai.json`:
 * `"shortcuts"` — заменить массив на `[]`;
@@ -1511,7 +1520,7 @@ git rm -r habibi_ai/habibi_ai/page/ai_chat
  "content": "[{\"id\":\"ha_header\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Habibi AI</span>\",\"col\":12}}]",
 ```
 
-- [ ] **Шаг 3: Снести устаревшую плитку**
+- [ ] **Шаг 4: Снести устаревшую плитку**
 
 В `habibi_ai/setup.py` заменить `ensure_desktop_icon` на `drop_desktop_icon` и
 поправить вызовы:
@@ -1543,7 +1552,7 @@ def drop_desktop_icon():
 		frappe.delete_doc("Desktop Icon", WORKSPACE, ignore_permissions=True)
 ```
 
-- [ ] **Шаг 4: Объявить зависимость от оболочки**
+- [ ] **Шаг 5: Объявить зависимость от оболочки**
 
 В `habibi_ai/hooks.py` после `app_license` добавить:
 
@@ -1553,7 +1562,14 @@ def drop_desktop_icon():
 required_apps = ["habibi_ui"]
 ```
 
-- [ ] **Шаг 5: Поправить README**
+- [ ] **Шаг 6: Поправить README**
+
+В `habibi_ai/hooks.py` поправить описание приложения — оно тоже описывает
+исчезнувшую страницу:
+
+```python
+app_description = "ИИ-модуль: раздел ИИ в интерфейсе habibi_ui поверх движка Directus"
+```
 
 В `README.md` заменить первый абзац:
 
@@ -1566,7 +1582,7 @@ required_apps = ["habibi_ui"]
 в `habibi_ui/frontend/src/features/ai`, здесь только серверная часть.
 ```
 
-- [ ] **Шаг 6: Проверить, что миграция проходит**
+- [ ] **Шаг 7: Проверить, что миграция проходит**
 
 ```bash
 docker compose -f ../habibi_docker/.devcontainer/docker-compose.yml exec -T frappe bash -lc \
