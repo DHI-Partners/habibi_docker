@@ -96,16 +96,6 @@ cmd_init() {
         --db-root-password 123 --admin-password admin \
         --install-app erpnext --install-app habibi_ui --install-app habibi_ai"
     in_bench "cd /workspace/$BENCH && bench --site $SITE set-config developer_mode 1"
-
-    # Frappe выбирает сайт по заголовку Host, а браузер и прокси vite шлют
-    # Host: localhost. Без этих двух ключей бенч отвечает 404 "localhost does
-    # not exist" на любой запрос с хоста, хотя порт опубликован и соединение
-    # проходит. Лечить заголовком в прокси нельзя: починился бы только vite,
-    # а прямое открытие localhost:8000 в браузере — нет.
-    in_bench "cd /workspace/$BENCH &&
-      bench set-config -g default_site $SITE &&
-      bench set-config -g serve_default_site true"
-
     echo "==> сайт $SITE создан"
   fi
 
@@ -122,6 +112,20 @@ cmd_init() {
       bench --site $SITE list-apps | grep -q \"^$app \" ||
       bench --site $SITE install-app $app"
   done
+
+  # Frappe выбирает сайт по заголовку Host, а браузер и прокси vite шлют
+  # Host: localhost. Без этих двух ключей бенч отвечает 404 "localhost does
+  # not exist" на любой запрос с хоста, хотя порт опубликован и соединение
+  # проходит. Лечить заголовком в прокси нельзя: починился бы только vite,
+  # а прямое открытие localhost:8000 в браузере — нет.
+  #
+  # Снаружи блока создания сайта намеренно: внутри он не выполнился бы у того,
+  # чей сайт заведён раньше этой правки, и 404 остался бы навсегда. init должен
+  # сходиться к нужному состоянию, а не доверять защите — тот же принцип, по
+  # которому выше доустанавливаются приложения. set-config идемпотентен.
+  in_bench "cd /workspace/$BENCH &&
+    bench set-config -g default_site $SITE &&
+    bench set-config -g serve_default_site true"
 
   cat <<'HINT'
 
