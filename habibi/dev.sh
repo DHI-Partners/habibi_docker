@@ -20,12 +20,18 @@ DC="docker compose -f .devcontainer/docker-compose.yml"
 APPS=(habibi_ui habibi_ai)
 LOGS=.dev-logs
 
+# Соседние репозитории, без которых dev.sh не работает целиком. Шире APPS:
+# habibi_ai_engine cmd_up вызывает напрямую (../habibi_ai_engine/dev.sh up),
+# но это не Frappe-приложение, и в APPS ему не место — тот список ставит
+# приложения в сайт через bench install-app.
+SIBLINGS=("${APPS[@]}" habibi_ai_engine)
+
 # Команда внутри контейнера бенча, от пользователя frappe.
 in_bench() { $DC exec -T frappe bash -lc "$1"; }
 
 need_siblings() {
   local missing=()
-  for app in "${APPS[@]}"; do
+  for app in "${SIBLINGS[@]}"; do
     [ -d "../$app" ] || missing+=("$app")
   done
   if [ ${#missing[@]} -gt 0 ]; then
