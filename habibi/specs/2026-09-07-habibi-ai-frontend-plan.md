@@ -1571,6 +1571,12 @@ required_apps = ["habibi_ui"]
 app_description = "ИИ-модуль: раздел ИИ в интерфейсе habibi_ui поверх движка Directus"
 ```
 
+Та же строка скопирована в `pyproject.toml` — поправить и там:
+
+```toml
+description = "ИИ-модуль: раздел ИИ в интерфейсе habibi_ui поверх движка Directus"
+```
+
 В `README.md` заменить первый абзац:
 
 ```markdown
