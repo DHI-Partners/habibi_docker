@@ -26,5 +26,13 @@
   {
     "url": "https://github.com/DHI-Partners/habibi_ai",
     "branch": "main"
+  },
+  {
+    "url": "https://github.com/DHI-Partners/custom_theme",
+    "branch": "main"
+  },
+  {
+    "url": "https://github.com/DHI-Partners/theme_studio",
+    "branch": "main"
   }
 ]
