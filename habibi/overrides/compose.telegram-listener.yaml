@@ -13,16 +13,28 @@
 # Telegram разорвал бы её.
 #
 # Подключать в COMPOSE_FILE после compose.yaml и оверрайдов redis/mariadb.
+#
+# platform — сразу с PLATFORM, как в compose.platform.yaml: сервиса нет в
+# compose.yaml, и тот оверрайд о нём не знает.
+#
+# logs — как у остальных сервисов в compose.bindmounts.yaml: без него логи
+# слушателя остались бы в writable layer и пропали бы с контейнером. Том
+# объявлен и здесь, чтобы файл работал и без bindmounts; с ним объявления
+# сливаются, и driver_opts берутся оттуда.
 
 services:
   telegram-listener:
     image: ${CUSTOM_IMAGE:?CUSTOM_IMAGE not set}:${CUSTOM_TAG:?CUSTOM_TAG not set}
     pull_policy: ${PULL_POLICY:-always}
     restart: ${RESTART_POLICY:-unless-stopped}
-    platform: linux/amd64
+    platform: ${PLATFORM:-linux/amd64}
     command: bench telegram listen-all
     volumes:
       - sites:/home/frappe/frappe-bench/sites
+      - logs:/home/frappe/frappe-bench/logs
     depends_on:
       configurator:
         condition: service_completed_successfully
+
+volumes:
+  logs:

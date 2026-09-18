@@ -17,6 +17,7 @@
 | [overrides/compose.platform.yaml](overrides/compose.platform.yaml)             | снимает захардкоженный `platform: linux/amd64`; нужен на ARM                      |
 | [overrides/compose.backup-offsite.yaml](overrides/compose.backup-offsite.yaml) | вывоз бэкапов с сервера через rclone                                              |
 | [overrides/compose.appmount.yaml](overrides/compose.appmount.yaml)             | подмена кода приложения рабочей копией с хоста; только для разработки             |
+| [overrides/compose.telegram-listener.yaml](overrides/compose.telegram-listener.yaml) | слушатель MTProto: мгновенный приём личных аккаунтов Telegram; необязателен (без него — cron раз в минуту) |
 
 Вне этого каталога наш только `.github/workflows/habibi-image.yml` — сборка
 образа в CI. Он обязан лежать в `.github/`, туда его требует GitHub.
