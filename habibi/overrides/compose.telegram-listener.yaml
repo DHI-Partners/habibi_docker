@@ -1,0 +1,28 @@
+# Слушатель MTProto: мгновенный приём сообщений личных аккаунтов Telegram.
+#
+# Без него аккаунты синхронизируются cron'ом раз в минуту (updates.getDifference)
+# — работает, но ответ ИИ приходит с задержкой до минуты. Бот с вебхуком от
+# этого сервиса не зависит.
+#
+# Один процесс на бенч: `bench telegram listen-all` сам находит сайты с
+# habibi_telegram и подключённые аккаунты, раз в минуту перечитывает список.
+# Пока слушатель жив, cron аккаунт пропускает (heartbeat в redis), упал —
+# через минуту всё возвращается на cron.
+#
+# Реплика строго одна: два слушателя открыли бы одну сессию дважды, и
+# Telegram разорвал бы её.
+#
+# Подключать в COMPOSE_FILE после compose.yaml и оверрайдов redis/mariadb.
+
+services:
+  telegram-listener:
+    image: ${CUSTOM_IMAGE:?CUSTOM_IMAGE not set}:${CUSTOM_TAG:?CUSTOM_TAG not set}
+    pull_policy: ${PULL_POLICY:-always}
+    restart: ${RESTART_POLICY:-unless-stopped}
+    platform: linux/amd64
+    command: bench telegram listen-all
+    volumes:
+      - sites:/home/frappe/frappe-bench/sites
+    depends_on:
+      configurator:
+        condition: service_completed_successfully
