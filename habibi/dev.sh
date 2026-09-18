@@ -18,7 +18,7 @@ cd "$(dirname "$0")/.."
 SITE=dev.localhost
 BENCH=development/frappe-bench
 DC="docker compose -f .devcontainer/docker-compose.yml"
-APPS=(habibi_ui habibi_ai)
+APPS=(habibi_ui habibi_ai habibi_telegram)
 LOGS=.dev-logs
 
 # Порт SSH-туннеля к прод-базе. Значение задаёт и владеет им
