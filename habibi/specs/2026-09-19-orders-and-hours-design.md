@@ -82,9 +82,10 @@
 | `customer` | Customer, если чат уже привязан |
 | `customer_name`, `phone` | названные клиентом, если не привязан |
 | `fulfilment` | Delivery / Pickup |
-| `delivery_zone` | Link → Delivery Zone |
-| `items` | child: `item_code`, `item_name`, `qty`, `rate`, `amount` |
-| `delivery_fee`, `net_total`, `taxes`, `grand_total`, `currency` | посчитанное ERP |
+| `delivery_zone` | имя зоны — Data, а не Link: `Delivery Zone` есть не на каждом сайте, и ссылка на отсутствующий доктайп уронила бы миграцию |
+| `notes` | пожелания для кухни |
+| `items` | child: `item_code`, `item_name`, `qty`, `rate`, `amount`; доставка — такой же строкой `SRV-DELIVERY` |
+| `total_taxes`, `grand_total`, `currency` | посчитанное ERP; `grand_total` — к оплате (с округлением, если оно включено) |
 | `expires_on` | создание + 30 минут |
 | `sales_order` | заполняется при создании заказа |
 
