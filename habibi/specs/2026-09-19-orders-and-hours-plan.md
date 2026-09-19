@@ -33,7 +33,7 @@
 ```bash
 DC="docker compose -f .devcontainer/docker-compose.yml"
 # быстрые тесты без сайта:
-$DC exec -T frappe bash -lc "cd /workspace/development/frappe-bench/apps/habibi_ai && ../../env/bin/python -m unittest <модуль> -v"
+$DC exec -T frappe bash -lc "cd /workspace/repos/habibi_ai && /workspace/development/frappe-bench/env/bin/python -m unittest <модуль> -v"
 # тесты на сайте:
 $DC exec -T frappe bash -lc "cd /workspace/development/frappe-bench && bench --site dev.localhost run-tests --module <модуль>"
 ```
@@ -155,7 +155,7 @@ class TestКонтекст(unittest.TestCase):
 
 - [ ] **Step 2: Убедиться, что падают**
 
-Run: `$DC exec -T frappe bash -lc "cd /workspace/development/frappe-bench/apps/habibi_ai && ../../env/bin/python -m unittest habibi_ai.tests.test_tools -v"`
+Run: `$DC exec -T frappe bash -lc "cd /workspace/repos/habibi_ai && /workspace/development/frappe-bench/env/bin/python -m unittest habibi_ai.tests.test_tools -v"`
 Expected: FAIL — `tool() got an unexpected keyword argument 'context'`.
 
 - [ ] **Step 3: Реализация в `habibi_ai/tools/__init__.py`** — заменить `tool`, `definitions`, `execute`:
@@ -415,7 +415,7 @@ class TestТекст(unittest.TestCase):
 
 - [ ] **Step 2: Убедиться, что падают**
 
-Run: `$DC exec -T frappe bash -lc "cd /workspace/development/frappe-bench/apps/habibi_ai && ../../env/bin/python -m unittest habibi_ai.tests.test_schedule -v"`
+Run: `$DC exec -T frappe bash -lc "cd /workspace/repos/habibi_ai && /workspace/development/frappe-bench/env/bin/python -m unittest habibi_ai.tests.test_schedule -v"`
 Expected: FAIL — `ImportError: cannot import name 'schedule'`.
 
 - [ ] **Step 3: Реализация** — `habibi_ai/schedule.py`:
@@ -858,7 +858,7 @@ class TestПредупреждение(unittest.TestCase):
 
 - [ ] **Step 4: Убедиться, что падают**
 
-Run: `$DC exec -T frappe bash -lc "cd /workspace/development/frappe-bench/apps/habibi_ai && ../../env/bin/python -m unittest habibi_ai.tests.test_hours -v"`
+Run: `$DC exec -T frappe bash -lc "cd /workspace/repos/habibi_ai && /workspace/development/frappe-bench/env/bin/python -m unittest habibi_ai.tests.test_hours -v"`
 Expected: FAIL — `ImportError: cannot import name 'hours'`.
 
 - [ ] **Step 5: Реализация** — `habibi_ai/tools/hours.py`:
@@ -1152,7 +1152,7 @@ class TestТекст(unittest.TestCase):
 
 - [ ] **Step 2: Убедиться, что падают**
 
-Run: `$DC exec -T frappe bash -lc "cd /workspace/development/frappe-bench/apps/habibi_ai && ../../env/bin/python -m unittest habibi_ai.tests.test_order_rules -v"`
+Run: `$DC exec -T frappe bash -lc "cd /workspace/repos/habibi_ai && /workspace/development/frappe-bench/env/bin/python -m unittest habibi_ai.tests.test_order_rules -v"`
 Expected: FAIL — `ImportError: cannot import name 'order_rules'`.
 
 - [ ] **Step 3: Реализация** — `habibi_ai/order_rules.py`:
@@ -1388,7 +1388,7 @@ class TestКаталогЗаказа(unittest.TestCase):
 
 - [ ] **Step 2: Убедиться, что падают**
 
-Run: `$DC exec -T frappe bash -lc "cd /workspace/development/frappe-bench/apps/habibi_ai && ../../env/bin/python -m unittest habibi_ai.tests.test_tools -v"`
+Run: `$DC exec -T frappe bash -lc "cd /workspace/repos/habibi_ai && /workspace/development/frappe-bench/env/bin/python -m unittest habibi_ai.tests.test_tools -v"`
 Expected: FAIL — `AttributeError: module 'habibi_ai.tools.menu' has no attribute 'sellable_catalog'`.
 
 - [ ] **Step 3: Реализация** — в `habibi_ai/tools/menu.py`:
