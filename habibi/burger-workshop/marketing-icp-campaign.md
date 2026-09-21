@@ -140,7 +140,7 @@ It follows the playbook's single order (Aigerim, burger + fries + lemonade, ₸6
 
 | Time | Scene | Playbook source | On screen |
 |---|---|---|---|
-| 0:00–0:30 | **Cold open.** It's 23:40 and the owner is asleep. A customer writes to @chooseRightWay. The AI asks for the address and payment method, reads the order back, and gets "yes". | Part 2 Intake | Phone screen-record of the chat, then cut to the new order appearing in the ERP |
+| 0:00–0:30 | **Cold open.** It's 23:40 and the owner is asleep. A customer writes to @chooseRightWay. The AI asks what's missing, reads back the quote (priced by the ERP, VAT included), warns it will be delivered when the kitchen opens, and gets "yes". | Part 2 Intake | Phone screen-record of the chat, then cut to the new order appearing in the ERP |
 | 0:30–1:30 | **The problem.** 40 unread DMs, a notebook, a cooked order nobody paid for, a courier calling. | — | B-roll or staged shots |
 | 1:30–2:30 | **Three seats, one system.** Order desk, kitchen tablet, courier. Each seat sees only what it needs. | Part 1 Seats | Three browser windows side by side |
 | 2:30–3:30 | **What the AI did.** Found the customer by phone, took prices from the ERP (never from memory), created the order. A human can still fix it while it's a draft. | Part 2 Intake | The Sales Order form |

@@ -66,8 +66,12 @@ genuinely cancelled order with its payment reversed.
   so none can be created until credentials exist. Meta Business Verification has
   not been started and has a long lead time — begin it now; nothing else depends
   on it.
-- **The middleware itself.** Not built. Every payload in the Intake Pack was
-  verified by hand against the live REST API instead.
+- ~~**The middleware itself.**~~ Built as `habibi_ai` (DHI-Partners/habibi_ai)
+  and live on Telegram as @chooseRightWay: it quotes from ERPNext and writes the
+  draft Sales Order in-process, so the REST contract in the Intake Pack now
+  matters only for a future WhatsApp or third-party integration. Playbook
+  Parts 1 and 7 describe it as built. Still missing: automated outbound status
+  messages, and a holding reply to the customer when the agent fails.
 - **The ~1,000 customer import.** Waiting on the client file. Six demo guests
   stand in.
 
