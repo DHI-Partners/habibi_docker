@@ -359,6 +359,83 @@ MATRIX.forEach(r=>{
 mh+='</tbody></table></div>';
 ap2.innerHTML=mh; main.appendChild(ap2);
 const a2=document.createElement("a"); a2.href="#part-matrix"; a2.innerHTML='<span class="dot" style="border-style:dotted"></span><span>Matrix</span><span class="ct"></span>'; rail.appendChild(a2);
+/* appendix: go-to-market */
+const ap3=document.createElement("section");
+ap3.className="part"; ap3.id="part-market";
+ap3.innerHTML=`<div class="part-head"><div class="part-code"><span>Appendix C &middot; Market</span><span class="rulefill"></span></div>
+<h2>Who this walkthrough is for, and how we sell it</h2><p class="purpose">The playbook doubles as the script for the YouTube walkthrough and the launch campaign. Decided: markets <strong>CIS + Gulf</strong> (Kazakhstan and Saudi Arabia first), offer <strong>done-for-you setup + monthly subscription</strong>, beachhead <strong>food delivery</strong>. Figures marked <em>est.</em> are planning assumptions &mdash; validate them in the first 20 discovery calls.</p></div>
+<div class="panel"><h3>Ideal customer &mdash; the chat-first delivery kitchen</h3>
+<p>A food business where at least 40% of orders arrive as Telegram, WhatsApp or Instagram messages, not through aggregators or walk-ins. Positioning line: <em>&ldquo;Your orders come in through chat. Habibi turns every message into a paid, cooked, delivered and booked order &mdash; the AI takes the one at 23:40 while you sleep.&rdquo;</em> Lead with &ldquo;order bot&rdquo;, not &ldquo;ERP&rdquo;.</p>
+<div class="tablewrap"><table><thead><tr><th>Attribute</th><th>Ideal</th><th>Acceptable</th></tr></thead><tbody>
+<tr><td>Staff</td><td>4&ndash;12: owner, 1&ndash;2 order-takers, 2&ndash;6 kitchen, 1&ndash;4 own couriers</td><td>1&ndash;20</td></tr>
+<tr><td>Locations</td><td>1&ndash;2 kitchens</td><td>up to 3</td></tr>
+<tr><td>Orders a day</td><td>60&ndash;200</td><td>30&ndash;300</td></tr>
+<tr><td>Own-channel share</td><td>&ge; 60% chat / phone</td><td>&ge; 40%</td></tr>
+<tr><td>Tools today</td><td>WhatsApp Business + notebook or Google Sheets</td><td>Poster, a Tilda/Taplink form</td></tr>
+<tr><td>Formats</td><td colspan="2">burger, shawarma, pizza, sushi; dark / cloud kitchens with 1&ndash;3 brands; meal-box subscriptions; home bakers turned brand; plov and national cuisine</td></tr>
+<tr><td>Buyer</td><td colspan="2">owner-operator, 25&ndash;45, runs Instagram personally, decides alone, pays by card; watches a 60-second clip, then writes</td></tr>
+</tbody></table></div>
+<p style="margin-top:14px"><strong>Pains, most acute first:</strong> messages lost at peak and at night &middot; order-taker salaries and their mistakes &middot; food cooked and never paid for &middot; courier chaos and &ldquo;where is my order?&rdquo; calls &middot; no customer base to market to again &middot; 20&ndash;35% aggregator commission &middot; the owner cannot see today&rsquo;s numbers without phoning someone.</p>
+<p><strong>Buying triggers:</strong> hiring another order-taker &middot; opening a second point or brand &middot; an aggregator raises fees &middot; a peak season is coming (New Year, Nauryz; Ramadan, Eid, National Day) &middot; a one-star review about a lost order &middot; the accountant asks for proper VAT records.</p>
+<p><strong>Leave alone:</strong> dine-in chains already on iiko or r_keeper &middot; more than 50 staff or 5 points &middot; aggregator-only sellers &middot; anyone who needs stock and recipe costing on day one.</p></div>
+<div class="panel"><h3>Two regions</h3><div class="tablewrap"><table><thead><tr><th></th><th>CIS (KZ &rarr; UZ, KG &rarr; RU)</th><th>Gulf (KSA &rarr; UAE)</th></tr></thead><tbody>
+<tr><td>First cities</td><td>Almaty, Astana, Shymkent, Tashkent</td><td>Riyadh, Jeddah, Dammam, Dubai</td></tr>
+<tr><td>Average check <em>est.</em></td><td>&#8376;4&ndash;8k (~$8&ndash;16)</td><td>SAR 40&ndash;90 (~$11&ndash;24)</td></tr>
+<tr><td>Revenue a month <em>est.</em></td><td>$15k&ndash;100k, net margin 8&ndash;15%</td><td>$30k&ndash;200k, net margin 10&ndash;18%</td></tr>
+<tr><td>Order channels</td><td>Telegram, WhatsApp, Instagram</td><td>WhatsApp, Instagram, Snapchat</td></tr>
+<tr><td>Payments</td><td>Kaspi Pay, card, cash</td><td>Mada, Apple Pay, STC Pay, Tabby, cash</td></tr>
+<tr><td>Aggregators to position against</td><td>Wolt, Glovo, Yandex Eda</td><td>HungerStation, Jahez, Talabat, Keeta</td></tr>
+<tr><td>Labour the AI replaces <em>est.</em></td><td>one order-taker shift &asymp; $300&ndash;500 a month</td><td>one expat order-taker &asymp; $800&ndash;1,500 a month</td></tr>
+<tr><td>Language</td><td>Russian</td><td>Arabic, then English</td></tr>
+<tr><td>Tax</td><td>12% VAT &mdash; as built here</td><td class="hi">15% VAT + ZATCA e-invoicing &mdash; needs an answer before selling</td></tr>
+</tbody></table></div>
+<p style="margin-top:14px">Wave 2, same footage with a new hook: flowers, cakes to order, cosmetics and clothing shops that sell through Instagram &mdash; once the food campaign has three paying cases.</p></div>
+<div class="panel"><h3>The offer</h3><ul>
+<li><strong>Setup, fixed price, live in 1&ndash;2 weeks:</strong> menu and customer import, the agent on their channel, the order workflow with the payment gate, kitchen board, courier seat, dashboard, one training per seat. Proposed <em>est.</em>: CIS $400&ndash;800, Gulf $1,000&ndash;2,500.</li>
+<li><strong>Subscription:</strong> Habibi Pro &euro;49 a month (up to 50 users, integrations) by default; Premium &euro;199 for several points or brands. The &euro;19 plan has no integrations and cannot carry the agent.</li>
+<li><strong>Risk reversal:</strong> a 14-day pilot on their real menu; setup is paid only at go-live.</li>
+<li><strong>The math:</strong> a night order-taker costs about &#8376;200k a month; Pro with the agent about &#8376;30k. One recovered order a night (&#8376;6.7k &times; 30) pays for it.</li></ul></div>
+<div class="panel"><h3>The walkthrough video, mapped to this playbook</h3>
+<p>8&ndash;12 minutes, Russian master, Arabic or AR/EN-subtitled cut for the Gulf. One order &mdash; Aigerim&rsquo;s burger, fries and lemonade &mdash; from start to finish.</p>
+<div class="tablewrap"><table><thead><tr><th>Time</th><th>Scene</th><th>Source</th></tr></thead><tbody>
+<tr><td class="dt">0:00</td><td><strong>Cold open.</strong> 23:40, owner asleep. A customer writes to @chooseRightWay; the agent asks what is missing, reads back the quote, warns it will be delivered at opening, gets &ldquo;yes&rdquo;; the draft appears in the ERP.</td><td class="p">1.2&ndash;1.5</td></tr>
+<tr><td class="dt">0:30</td><td><strong>The problem.</strong> 40 unread messages, a notebook, a cooked order nobody paid for.</td><td class="p">&mdash;</td></tr>
+<tr><td class="dt">1:30</td><td><strong>Three seats, one system.</strong> Desk, kitchen tablet, courier phone side by side.</td><td class="p">Part 0</td></tr>
+<tr><td class="dt">2:30</td><td><strong>What the agent did.</strong> Found the customer, priced from the ERP, wrote the draft.</td><td class="p">1.3&ndash;1.6</td></tr>
+<tr><td class="dt">3:30</td><td><strong>No money, no cooking.</strong> Send to Kitchen is missing until the Kaspi payment is recorded. The key moment.</td><td class="p">2.2&ndash;2.4</td></tr>
+<tr><td class="dt">5:00</td><td><strong>The pass.</strong> Read the card, drag to Ready; the illegal drag snaps back.</td><td class="p">Part 3</td></tr>
+<tr><td class="dt">6:00</td><td><strong>Dispatch and courier.</strong> Assign, print the note, mark delivered.</td><td class="p">Parts 4&ndash;5</td></tr>
+<tr><td class="dt">7:00</td><td><strong>The books close themselves.</strong> Invoice from the order, VAT split.</td><td class="p">Part 6</td></tr>
+<tr><td class="dt">7:45</td><td><strong>A human steps in.</strong> Reply in the chat console; the bot pauses in that chat only.</td><td class="p">7.1&ndash;7.2</td></tr>
+<tr><td class="dt">8:30</td><td><strong>The owner&rsquo;s day in one screen.</strong></td><td class="p">Part 8</td></tr>
+<tr><td class="dt">9:30</td><td><strong>The money</strong>, then the call to action: order a burger from the bot yourself, and book a free 20-minute audit.</td><td class="p">&mdash;</td></tr>
+</tbody></table></div>
+<p style="margin-top:14px">Five 45&ndash;60 second cut-downs, one pain each: the 23:40 order &middot; no cooking before payment &middot; the courier note &middot; the dashboard &middot; order-taker vs agent.</p></div>
+<div class="panel"><h3>Hooks</h3><ul>
+<li>&laquo;Заказ в 23:40. Вы спите. Бот уже принял его, посчитал и оформил &mdash; кухня начнёт после оплаты.&raquo;</li>
+<li>&laquo;Сколько заказов вы потеряли в директе на этой неделе?&raquo;</li>
+<li>&laquo;Кухня не начнёт готовить, пока заказ не оплачен. Не по правилам &mdash; по системе.&raquo;</li>
+<li dir="rtl" style="text-align:right">&laquo;كم طلب ضاع في الواتساب هذا الأسبوع؟&raquo;</li>
+<li dir="rtl" style="text-align:right">&laquo;بدل موظف استقبال الطلبات: وكيل ذكي يعمل ٢٤ ساعة.&raquo;</li>
+<li>&ldquo;Stop paying 30% to aggregators for customers who already message you.&rdquo;</li></ul></div>
+<div class="panel"><h3>Funnel and channels</h3>
+<p>Video or clip &rarr; food-delivery landing page (RU / AR / EN) &rarr; <strong>the prospect orders from the bot</strong> &rarr; 20-minute audit &rarr; 14-day pilot &rarr; paid setup &rarr; subscription.</p>
+<div class="tablewrap"><table><thead><tr><th>Channel</th><th>CIS</th><th>Gulf</th></tr></thead><tbody>
+<tr><td>Paid social</td><td>Instagram / Facebook Reels (KZ, UZ)</td><td>Instagram, Snapchat, TikTok</td></tr>
+<tr><td>Search</td><td>&laquo;бот для приема заказов&raquo;, &laquo;программа для доставки еды&raquo;</td><td dir="rtl" style="text-align:right">نظام طلبات واتساب للمطاعم</td></tr>
+<tr><td>Telegram</td><td>Telegram Ads, restaurant-owner chats and channels</td><td>&mdash;</td></tr>
+<tr><td>Outbound</td><td>2GIS &laquo;доставка еды&raquo; + Instagram hashtags; send the 60-second clip</td><td>Instagram home kitchens; LinkedIn for cloud-kitchen operators</td></tr>
+<tr><td>Partners</td><td>packaging and food suppliers, restaurant accountants</td><td>cloud-kitchen facilities, payment-provider merchant programmes</td></tr>
+</tbody></table></div>
+<p style="margin-top:14px">Test budget <em>est.</em> $1.5&ndash;3k per region over four weeks, three hooks &times; two audiences. Targets: cost per booked audit under $25 (CIS) / $60 (Gulf), audit &rarr; pilot 30%, pilot &rarr; paid 50%, first ten customers in 8 / 12 weeks.</p></div>
+<div class="panel"><h3>Before recording and launch</h3><ol>
+<li><strong>Demo mode for the bot.</strong> Viewers will really order from @chooseRightWay &mdash; point it at a demo company so nothing reaches a real kitchen or courier.</li>
+<li><strong>Rights.</strong> Written OK to show the Habibi Burger brand and data, or re-skin as a demo brand. Blur phone numbers.</li>
+<li><strong>Silent failures.</strong> See 7.4 &mdash; someone watches the chat console while the ads run.</li>
+<li><strong>Gulf.</strong> WhatsApp needs Meta verification (not started); Arabic agent persona; a ZATCA answer.</li>
+<li><strong>Pricing.</strong> Is the agent included in Pro or billed by volume? Confirm setup fees per region.</li></ol></div>`;
+main.appendChild(ap3);
+const a3=document.createElement("a"); a3.href="#part-market"; a3.innerHTML='<span class="dot" style="border-style:dotted"></span><span>Market</span><span class="ct"></span>'; rail.appendChild(a3);
 
 const total=P.reduce((n,p)=>n+p.procs.length,0);
 function refresh(){
