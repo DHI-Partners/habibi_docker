@@ -1,7 +1,7 @@
 # Habibi Burger → ideal customer & launch campaign
 
 Status: draft for review · 2026-09-22
-Inputs: `burger-role-playbook.html` (9 parts), `burger-shakedown-run.html`,
+Inputs: `burger-role-playbook.html` (Parts 0–8), `burger-shakedown-run.html`,
 the habibi_ai Telegram agent (@chooseRightWay, full order intake live),
 `site-habibi/src/components/Pricing.tsx`.
 
@@ -140,16 +140,16 @@ It follows the playbook's single order (Aigerim, burger + fries + lemonade, ₸6
 
 | Time | Scene | Playbook source | On screen |
 |---|---|---|---|
-| 0:00–0:30 | **Cold open.** It's 23:40 and the owner is asleep. A customer writes to @chooseRightWay. The AI asks what's missing, reads back the quote (priced by the ERP, VAT included), warns it will be delivered when the kitchen opens, and gets "yes". | Part 2 Intake | Phone screen-record of the chat, then cut to the new order appearing in the ERP |
+| 0:00–0:30 | **Cold open.** It's 23:40 and the owner is asleep. A customer writes to @chooseRightWay. The AI asks what's missing, reads back the quote (priced by the ERP, VAT included), warns it will be delivered when the kitchen opens, and gets "yes". | Part 1 Intake | Phone screen-record of the chat, then cut to the new order appearing in the ERP |
 | 0:30–1:30 | **The problem.** 40 unread DMs, a notebook, a cooked order nobody paid for, a courier calling. | — | B-roll or staged shots |
-| 1:30–2:30 | **Three seats, one system.** Order desk, kitchen tablet, courier. Each seat sees only what it needs. | Part 1 Seats | Three browser windows side by side |
-| 2:30–3:30 | **What the AI did.** Found the customer by phone, took prices from the ERP (never from memory), created the order. A human can still fix it while it's a draft. | Part 2 Intake | The Sales Order form |
-| 3:30–5:00 | **No money, no cooking.** Confirm the order, try to send it to the kitchen, and the system refuses. Record the Kaspi payment, and the "send to kitchen" action appears. | Part 3 Money | **Hero moment.** Show the refusal clearly. |
-| 5:00–6:00 | **The pass.** A Kanban on the tablet. Read the ticket without opening it, drag it to Ready. Show that the kitchen seat can't touch the price. | Part 4 Kitchen | Tablet |
-| 6:00–7:00 | **Dispatch and courier.** Assign a courier, print the delivery note. The courier sees only their own runs and closes the delivery. | Parts 5–6 | Phone view as the courier |
-| 7:00–7:45 | **Books close themselves.** Invoice raised from the order, VAT split checked. Cancelling costs nothing extra. | Part 7 Books | Invoice |
-| 7:45–8:30 | **When the AI hands it back.** Complaint → human. Unclear order → human. Outside opening hours → polite reply. | Part 8 Escalation | Conversation assignment |
-| 8:30–9:30 | **The owner's dashboard.** Today's orders, revenue, split by channel. Checked against the board. | Part 9 Analysis | Dashboard |
+| 1:30–2:30 | **Three seats, one system.** Order desk, kitchen tablet, courier. Each seat sees only what it needs. | Part 0 Cast | Three browser windows side by side |
+| 2:30–3:30 | **What the AI did.** Found the customer by phone, took prices from the ERP (never from memory), created the order. A human can still fix it while it's a draft. | Part 1 Intake | The Sales Order form |
+| 3:30–5:00 | **No money, no cooking.** Confirm the order, try to send it to the kitchen, and the system refuses. Record the Kaspi payment, and the "send to kitchen" action appears. | Part 2 Money | **Hero moment.** Show the refusal clearly. |
+| 5:00–6:00 | **The pass.** A Kanban on the tablet. Read the ticket without opening it, drag it to Ready. Show that the kitchen seat can't touch the price. | Part 3 Kitchen | Tablet |
+| 6:00–7:00 | **Dispatch and courier.** Assign a courier, print the delivery note. The courier sees only their own runs and closes the delivery. | Parts 4–5 | Phone view as the courier |
+| 7:00–7:45 | **Books close themselves.** Invoice raised from the order, VAT split checked. Cancelling costs nothing extra. | Part 6 Books | Invoice |
+| 7:45–8:30 | **When the AI hands it back.** The operator sees the whole chat in the Telegram Chat Console, replies by hand, and the bot steps aside in that chat alone. | Part 7 Escalation | Telegram Chat Console |
+| 8:30–9:30 | **The owner's dashboard.** Today's orders, revenue, split by channel. Checked against the board. | Part 8 Analysis | Dashboard |
 | 9:30–10:30 | **The money.** The ROI math from section 4, plus the aggregator comparison. | — | Simple animated numbers |
 | 10:30–end | **Call to action.** 1) "Order a burger from our bot yourself" (link to @chooseRightWay). 2) "Book a free 20-minute order-flow audit". | — | QR code + link |
 
