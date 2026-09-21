@@ -14,6 +14,7 @@ no build step.
 | `burger-shakedown-run.html` | Acceptance sheet. 11 stages, 61 checks, against the PoC success criteria. Stage 11 is what is honestly not done. |
 | `BUILD-LOG.md` | Everything that was created on the live instance, and what to delete to undo it. |
 | `habibi-burger-poc-scope_1.md` | The client input document this pack was built from. |
+| `marketing-icp-campaign.md` | Ideal customer profile (CIS + Gulf), offer, YouTube video shot list mapped to the playbook, ad copy and launch funnel. |
 
 Start with the playbook if you are doing the clicking. Use the shakedown run if
 you are signing off. Hand the intake pack to whoever builds the middleware.
