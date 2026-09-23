@@ -44,7 +44,7 @@
 | Режим работы: `Working Hours` + слоты + исключения | `habibi_ai` |
 | Расчёт заказа: `AI Order Quote`, ссылка на канальный чат и `sales_order` | `habibi_ai` |
 | Чат канала с паузой бота: `AI Channel Chat.ai_paused`, `paused_reason` | `habibi_ai` |
-| Telegram: `Telegram Bot`, `Telegram Chat`, `Telegram Message`, `Telegram Message Template` (с переводами) | `habibi_telegram` |
+| Telegram: `Telegram Account` (личный аккаунт, MTProto), `Telegram Bot`, `Telegram Chat`, `Telegram Message`, `Telegram Message Template` (с переводами) | `habibi_telegram` |
 | Воркфлоу Sales Order `Habibi Burger Order`: `New` → `Confirmed` → `In Kitchen` → `Ready` → `Out for Delivery` → `Delivered`; `Cancelled` | заведён руками на `erp.habibi-erp.com` |
 | Свои поля Sales Order `custom_*` (способ получения, зона, источник, телефон) | заведены руками там же |
 
@@ -189,7 +189,7 @@ bench --site <site> habibi-ai apply-preset food
 | Зоны доставки | `generic`, флаг `delivery` | `Delivery Zone` |
 | Режим работы | `custom: hours` | `Working Hours` |
 | О компании | `custom: profile` | `Business Profile` |
-| Telegram | `custom: telegram` | `Telegram Bot` |
+| Telegram | `custom: telegram` | `Telegram Account` |
 
 Главная и пустые разделы, когда Telegram не подключён, показывают плашку
 «Подключите Telegram» со ссылкой на мастер.
@@ -254,9 +254,27 @@ bench --site <site> habibi-ai apply-preset food
   целиком одним вызовом.
 - **О компании** — поля ядра и блоки правил; у пустого блока видна подсказка
   из пресета. Владелец может добавить свой блок.
-- **Telegram** — три шага: создать бота у @BotFather, вставить токен, мы
-  ставим webhook. Дальше экран показывает «@имя подключён, последнее сообщение
-  N минут назад» и кнопку «Проверить».
+- **Telegram** — вход в настоящий Telegram-аккаунт бизнеса (`Telegram Account`,
+  MTProto из `habibi_telegram`): клиенты пишут именно в него, и ИИ отвечает
+  от его имени. Шаги: телефон → код из Telegram → пароль двухэтапной
+  проверки (только если он включён на аккаунте). `api_id`/`api_hash` — одни
+  на платформу, лежат в `common_site_config` (`telegram_api_id`,
+  `telegram_api_hash`); владелец их не видит, а без них экран отвечает
+  «Подключение Telegram не настроено на сервере». Методы —
+  `habibi_ai.cabinet.settings.telegram_status / request_code / sign_in /
+  disconnect`; состояние экрана: `none`, `code_sent`, `password_needed`,
+  `connected`, `error` (сессию отозвали из Telegram). Аккаунт кабинета —
+  единственный на сайте; если их несколько — тот, где включён ИИ, иначе
+  самый ранний. Уже вошедший аккаунт (заведённый руками) сразу виден
+  подключённым. После входа включаются приём сообщений (`enabled`,
+  `sync_enabled` — их забирает cron/слушатель `habibi_telegram`) и ИИ
+  (`ai_enabled`, без ответов в группах); бот ИИ ставится, только если у
+  тенанта он один, иначе экран показывает «ИИ-бот не выбран — обратитесь к
+  администратору». Подключённый аккаунт: «Подключён: имя (@username),
+  телефон, последнее сообщение N минут назад» и «Отключить» с
+  подтверждением. Код и пароль нигде не сохраняются; ошибки Telegram —
+  русским текстом, исходное сообщение только в лог.
+  `Telegram Bot` в кабинете нет: это бот уведомлений сотрудникам.
 
 ## 7. Живое обновление
 
@@ -311,7 +329,7 @@ bench --site <site> habibi-ai apply-preset food
   Но «Переписки», «Режим работы», «О компании», «Telegram» и действия
   заказа (`orders.transition`, `orders.notify`) нужны в паре с доменными
   доктайпами `habibi_ai` (`AI Channel Chat`, `Business Profile`,
-  `Working Hours`, `AI Order Quote`, `Telegram Bot/Chat`) — а
+  `Working Hours`, `AI Order Quote`, `Telegram Account/Chat`) — а
   `habibi_ui` не имеет права импортировать `habibi_ai` (правило зависимостей
   «фронт-платформа не знает про ИИ-модуль»). Поэтому эти методы — прямые
   `@frappe.whitelist()` в `habibi_ai.cabinet.chats`, `habibi_ai.cabinet.orders`,
