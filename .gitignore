@@ -42,3 +42,6 @@ node_modules
 
 # Логи фоновых процессов локальной среды (habibi/dev.sh)
 .dev-logs/
+
+# Артефакты Playwright MCP (снимки, логи консоли)
+.playwright-mcp/
