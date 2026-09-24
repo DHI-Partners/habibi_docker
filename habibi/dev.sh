@@ -175,8 +175,8 @@ background() {
     return
   fi
   mkdir -p "$LOGS"
-  (cd "$dir" && exec bash -lc "$cmd") > "$LOGS/$name.log" 2>&1 &
-  echo $! > "$LOGS/$name.pid"
+  (cd "$dir" && exec bash -lc "$cmd") >"$LOGS/$name.log" 2>&1 &
+  echo $! >"$LOGS/$name.pid"
   echo "==> $name запущен (pid $!), лог $LOGS/$name.log"
 }
 
@@ -190,7 +190,10 @@ stop_background() {
 
 cmd_up() {
   need_siblings
-  [ -d "$BENCH" ] || { echo "бенча нет — сначала ./habibi/dev.sh init" >&2; exit 1; }
+  [ -d "$BENCH" ] || {
+    echo "бенча нет — сначала ./habibi/dev.sh init" >&2
+    exit 1
+  }
 
   # Движок поднимает свой скрипт: у него своя логика туннеля и сборки .env.dev
   # с сервера, второй копии ей не нужно.
@@ -221,9 +224,12 @@ cmd_down() {
 cmd_logs() {
   local name=${1:-}
   case "$name" in
-    движок) (cd "$ENGINE" && ./dev.sh logs) ;;
-    вотчер|бенч|vite) tail -f "$LOGS/$name.log" ;;
-    *) echo "usage: $0 logs {движок|вотчер|бенч|vite}" >&2; exit 1 ;;
+  движок) (cd "$ENGINE" && ./dev.sh logs) ;;
+  вотчер | бенч | vite) tail -f "$LOGS/$name.log" ;;
+  *)
+    echo "usage: $0 logs {движок|вотчер|бенч|vite}" >&2
+    exit 1
+    ;;
   esac
 }
 
@@ -242,7 +248,7 @@ cmd_logs() {
 cmd_check() {
   local failed=0
 
-  ok()  { echo "OK   $1"; }
+  ok() { echo "OK   $1"; }
   bad() {
     echo "FAIL $1"
     [ -n "${2:-}" ] && echo "     чинить: $2"
@@ -309,7 +315,7 @@ cmd_check() {
     ok "движок -> база: /server/info -> 200"
   else
     bad "движок -> база: /server/info -> ${code:-нет ответа} (звено 2 и 3 зелёные, а это красное — именно так выглядела авария 2026-09-07)" \
-        "(cd ../habibi_ai_engine && ./dev.sh up); если не помогло — docker compose -f ../habibi_ai_engine/compose.dev.yaml logs ai-engine"
+      "(cd ../habibi_ai_engine && ./dev.sh up); если не помогло — docker compose -f ../habibi_ai_engine/compose.dev.yaml logs ai-engine"
   fi
 
   # 5. Бенч отвечает на :8000.
@@ -339,7 +345,7 @@ cmd_check() {
     ok "конфиг бенча: habibi_ai_engine_url=$url, токен задан"
   else
     bad "конфиг бенча: url=${url:-не задан}, токен $token_msg" \
-        "$DC exec -T frappe bash -lc 'cd /workspace/$BENCH && bench --site $SITE set-config -g habibi_ai_engine_url http://host.docker.internal:8055 && bench --site $SITE set-config -g habibi_ai_engine_token <токен>'"
+      "$DC exec -T frappe bash -lc 'cd /workspace/$BENCH && bench --site $SITE set-config -g habibi_ai_engine_url http://host.docker.internal:8055 && bench --site $SITE set-config -g habibi_ai_engine_token <токен>'"
   fi
 
   # 7. Vite отвечает на :5173.
@@ -368,7 +374,10 @@ cmd_check() {
 tunnel_probe() {
   local byte
   { exec 3<>"/dev/tcp/127.0.0.1/$TUNNEL_PORT"; } 2>/dev/null || return 1
-  { printf '\x00\x00\x00\x08\x04\xd2\x16\x2f' >&3; } 2>/dev/null || { exec 3<&- 3>&- 2>/dev/null; return 1; }
+  { printf '\x00\x00\x00\x08\x04\xd2\x16\x2f' >&3; } 2>/dev/null || {
+    exec 3<&- 3>&- 2>/dev/null
+    return 1
+  }
   if read -r -t 3 -n 1 -u 3 byte 2>/dev/null; then
     exec 3<&- 3>&- 2>/dev/null
     [ -n "$byte" ]
@@ -379,10 +388,16 @@ tunnel_probe() {
 }
 
 case "${1:-up}" in
-  init)   cmd_init ;;
-  up)     cmd_up ;;
-  down)   cmd_down ;;
-  logs)   shift; cmd_logs "$@" ;;
-  check)  cmd_check ;;
-  *)      echo "usage: $0 {init|up|down|logs|check}" >&2; exit 1 ;;
+init) cmd_init ;;
+up) cmd_up ;;
+down) cmd_down ;;
+logs)
+  shift
+  cmd_logs "$@"
+  ;;
+check) cmd_check ;;
+*)
+  echo "usage: $0 {init|up|down|logs|check}" >&2
+  exit 1
+  ;;
 esac
