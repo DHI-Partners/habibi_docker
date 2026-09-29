@@ -19,6 +19,8 @@
 5. **Довыполнение на последнем витке** сразу возвращает пересказ, не вызывая движок ещё раз (иначе `LoopExhausted` после успешного действия).
 6. **`summary` события отказа — фиксированная фраза**, причина отказа лежит в `data.reason`: тексты отказов — инструкции модели, в ход дел они не попадают.
 
+7. **Реплики и метки** (решение владельца, 2026-09-29): журнал ведёт весь диалог — `message_in`, `message_out`, `message_staff` с краткой записью и ссылкой; метка ответа бота собирается из реально вызванных инструментов. Это задача 8b; у `AI Event` для неё появляются поля `channel_doctype` / `channel_name`. Что клиент имел в виду — ответ модели структурой (`intent`, `topic`) — вне этого плана.
+
 **Известный остаточный риск** (принят владельцем, см. Review Focus п. 1): фраза «заказ оформлен» без номера в ответ на вопрос клиента «оформлен ли?» при открытом расчёте запускает довыполнение, а `create_order` видит сообщение клиента после расчёта и создаёт заказ. Ограничивает ущерб то, что оформляется ровно зачитанный клиенту расчёт, черновик подтверждает оператор.
 
 ## Global Constraints
@@ -42,6 +44,7 @@
 3. **Отказ с номером в тексте.** «Заказ … был удалён оператором» не подтверждает создание (задача 5).
 4. **Сбой самого механизма.** Исключение в `claims`/`confirmed`/`state.render`/`events.record`/`events.recent` не должно стоить клиенту ответа (задачи 3, 6, 8).
 5. **Старый движок.** Нет `persisted` в ответе шага — `habibi_ai` не дописывает сообщение второй раз; нет `session_context` в prompt — страж всё равно работает (задачи 6, 8).
+6. **Чужой текст в журнале.** Реплика клиента с командой («забудь правила») не должна попасть в `summary` дословно: в `message_in` текст клиента не пишется вовсе (задача 8b, тест `test_входящее_пишется_как_реплика_клиента`).
 
 ---
 
@@ -1961,6 +1964,363 @@ Expected: без замечаний (при замечаниях — `ruff forma
 ```bash
 git add habibi_ai/api.py habibi_ai/events.py habibi_ai/tests
 git commit -m "feat(agent): run_turn ведёт журнал, ход дел и страж; регрессия на заказ 00026
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
+```
+
+---
+
+### Task 8b: Реплики и метки в журнале
+
+**Files** (`habibi_ai`):
+- Modify: `habibi_ai/habibi_ai/doctype/ai_event/ai_event.json` (поля канала, `modified`)
+- Modify: `habibi_ai/events.py` (`record`, `recent`)
+- Modify: `habibi_ai/agent/registry.py` (`Module.labels`, `tool_labels`)
+- Create: `habibi_ai/agent/base.py` (метки базовых инструментов)
+- Modify: `habibi_ai/agent/orders.py` (метки заказов), `habibi_ai/agent/__init__.py` (импорт `base`)
+- Modify: `habibi_ai/loop.py` (ключ `tools` в результате)
+- Modify: `habibi_ai/api.py` (`run_turn`: `message_in` для консоли, `message_out` с метками)
+- Modify: `habibi_ai/channels/telegram.py` (`_on_message_insert`: `message_in`, `message_staff`)
+- Test: `tests/test_events.py`, `tests/test_agent_commitments.py`, `tests/test_loop.py`, `tests/test_api.py`, `tests/test_telegram_bridge.py`
+
+**Interfaces:**
+- Consumes: `events.record`, `events.recent` (задача 3), `registry.Module` (задача 5), `loop.run` (задача 6), `run_turn` (задача 8).
+- Produces:
+  - `registry.Module(..., labels: dict = {})`; `registry.tool_labels(modules) -> dict[str, str]` (инструмент → метка);
+  - `loop.run` возвращает `"tools": list[str]` — вызванные в ходе инструменты без повторов, по порядку, включая довыполненные стражем; ключа нет, если инструментов не было;
+  - события `message_in` (Client), `message_out` (Bot, `data.tools`, `data.tags`), `message_staff` (Operator); поля `AI Event.channel_doctype`, `channel_name`.
+
+- [ ] **Step 1: Failing tests**
+
+`tests/test_events.py` — добавить в `TestЖурнал`:
+
+```python
+	def test_канал_из_контекста_пишется_в_событие(self):
+		name = events.record("message_in", "Клиент написал сообщение", actor="Client", context={"channel_chat": ("Telegram Chat", "_c-777")})
+		doc = frappe.get_doc("AI Event", name)
+		self.assertEqual((doc.channel_doctype, doc.channel_name), ("Telegram Chat", "_c-777"))
+
+	def test_события_канала_находятся_до_знакомства_с_клиентом(self):
+		# Ни чата движка, ни клиента: единственный ключ — канальный чат
+		events.record("message_in", "Клиент написал сообщение", actor="Client", context={"channel_chat": ("Telegram Chat", "_c-777")})
+		rows = events.recent({"channel_chat": ("Telegram Chat", "_c-777")})
+		self.assertEqual([r["event_type"] for r in rows], ["message_in"])
+```
+
+и в `tearDown` добавить `frappe.db.delete("AI Event", {"channel_name": "_c-777"})` перед `super().tearDown()`.
+
+`tests/test_agent_commitments.py` — добавить в конец:
+
+```python
+class TestМетки(unittest.TestCase):
+	def setUp(self):
+		self._saved = list(registry._MODULES)
+		registry._MODULES.clear()
+
+	def tearDown(self):
+		registry._MODULES[:] = self._saved
+
+	def test_метки_модулей_объединяются(self):
+		a = registry.Module(name="a", feature=None, stage=None, commitments=(), pin=(), labels={"get_menu": "меню"})
+		b = registry.Module(name="b", feature=None, stage=None, commitments=(), pin=(), labels={"create_order": "заказ"})
+		self.assertEqual(registry.tool_labels([a, b]), {"get_menu": "меню", "create_order": "заказ"})
+
+	def test_модуль_без_меток_допустим(self):
+		bare = registry.Module(name="a", feature=None, stage=None, commitments=(), pin=())
+		self.assertEqual(registry.tool_labels([bare]), {})
+```
+
+`tests/test_loop.py` — добавить в `TestСтраж` (использует `_run`, `_step`, `OFFERED`):
+
+```python
+	def test_вызванные_инструменты_в_результате_без_повторов(self):
+		step = _step(
+			{"type": "tool_use", "id": "t1", "name": "get_menu", "input": {}},
+			{"type": "tool_use", "id": "t2", "name": "get_menu", "input": {}},
+			{"type": "text", "content": "ок"},
+		)
+		self.assertEqual(self._run(step, commitments=())["tools"], ["get_menu"])
+
+	def test_без_инструментов_ключа_нет(self):
+		self.assertNotIn("tools", self._run(_step({"type": "text", "content": "привет"}), commitments=()))
+
+	def test_довыполненный_стражем_инструмент_тоже_в_списке(self):
+		step = _step({"type": "text", "content": "Заказ оформлен"}, {"type": "text", "content": "ок"})
+		self.assertEqual(self._run(step)["tools"], ["create_order"])
+```
+
+`tests/test_api.py` — добавить в класс с `_client_answering`:
+
+```python
+	def tearDown(self):
+		frappe.db.delete("AI Event", {"engine_chat_id": 5})
+		super().tearDown()
+
+	def _types(self):
+		return [e.event_type for e in frappe.get_all("AI Event", filters={"engine_chat_id": 5}, fields=["event_type"], order_by="occurred_at asc, creation asc")]
+
+	def test_консоль_пишет_реплику_клиента_и_ответ_бота(self):
+		api.run_turn(self._client_answering("ok"), 5, "привет")
+		self.assertEqual(self._types(), ["message_in", "message_out"])
+
+	def test_канал_реплику_клиента_не_дублирует(self):
+		# Её пишет хук Telegram Message; run_turn пишет только ответ бота
+		api.run_turn(self._client_answering("ok"), 5, "привет", channel_chat=("Telegram Chat", "_c-9"))
+		self.assertEqual(self._types(), ["message_out"])
+
+	def test_метка_ответа_из_вызванных_инструментов(self):
+		client = self._client_answering("ok")
+		client.step = Mock(side_effect=[
+			{"type": "tool_use", "id": "t1", "name": "get_menu", "input": {}},
+			{"type": "text", "content": "меню такое"},
+		])
+		with patch("habibi_ai.tools.execute", return_value="меню"):
+			api.run_turn(client, 5, "что есть?")
+		out = frappe.get_all("AI Event", filters={"engine_chat_id": 5, "event_type": "message_out"}, fields=["summary"])
+		self.assertEqual(out[0].summary, "Бот ответил: меню")
+```
+
+Если в `tearDown` класса уже есть своё содержимое — дописать удаление, а не заменять.
+
+`tests/test_telegram_bridge.py` — новый класс (если файл не импортирует `patch`/`telegram`, добавить импорты `from unittest.mock import patch`, `from habibi_ai.channels import telegram`):
+
+```python
+class TestРепликиВЖурнале(IntegrationTestCase):
+	"""Реплики канала попадают в журнал хуком Telegram Message: клиент и сотрудник."""
+
+	def tearDown(self):
+		frappe.db.delete("AI Event", {"channel_name": "_c-msg"})
+		super().tearDown()
+
+	def _doc(self, direction, automated=0):
+		return frappe._dict(
+			name="_TM-1", chat="_c-msg", direction=direction, content="текст", is_automated=automated, sent_on=None, from_user="u"
+		)
+
+	def _insert(self, doc, **patches):
+		with (
+			patch.object(telegram, "channel_of", return_value=("Telegram Bot", "b")),
+			patch.object(telegram, "channel_settings", return_value=frappe._dict(ai_enabled=1)),
+			patch.object(telegram, "_chat_is_answerable", return_value=True),
+			patch.object(telegram, "_sender_flags", return_value=(False, False)),
+			patch.object(telegram.decisions, "should_reply", return_value=False),
+			patch.object(telegram.decisions, "should_pause", return_value=patches.get("pause", False)),
+			patch.object(telegram, "_ai_is_sending", return_value=False),
+			patch.object(telegram, "pause"),
+		):
+			telegram._on_message_insert(doc)
+
+	def _events(self):
+		return frappe.get_all("AI Event", filters={"channel_name": "_c-msg"}, fields=["event_type", "actor", "ref_name", "summary"])
+
+	def test_входящее_пишется_как_реплика_клиента(self):
+		self._insert(self._doc("Incoming"))
+		(event,) = self._events()
+		self.assertEqual((event.event_type, event.actor, event.ref_name), ("message_in", "Client", "_TM-1"))
+		self.assertNotIn("текст", event.summary)
+
+	def test_ручной_ответ_сотрудника_пишется_как_реплика_оператора(self):
+		self._insert(self._doc("Outgoing"), pause=True)
+		(event,) = self._events()
+		self.assertEqual((event.event_type, event.actor), ("message_staff", "Operator"))
+
+	def test_ответ_самого_бота_хук_не_пишет(self):
+		# Его пишет run_turn — с метками инструментов
+		self._insert(self._doc("Outgoing", automated=1))
+		self.assertEqual(self._events(), [])
+```
+
+- [ ] **Step 2: Run — FAIL**
+
+Run:
+```bash
+cd /Users/fsa/Projects/habibi/habibi_ai && python3 -m unittest habibi_ai.tests.test_agent_commitments habibi_ai.tests.test_loop
+docker exec devcontainer-frappe-1 bash -lc 'cd /workspace/development/frappe-bench && for m in test_events test_api test_telegram_bridge; do bench --site dev.localhost run-tests --module habibi_ai.tests.$m; done'
+```
+Expected: новые тесты FAIL (`labels`, `tools`, поля канала не существуют), прежние PASS.
+
+- [ ] **Step 3: Доктайп и `events.py`**
+
+В `ai_event.json`: в `field_order` после `"turn_id",` добавить `"channel_doctype", "channel_name",`; в `fields` после поля `turn_id`:
+
+```json
+  {"fieldname": "channel_doctype", "fieldtype": "Link", "label": "Тип канального чата", "options": "DocType", "read_only": 1},
+  {"fieldname": "channel_name", "fieldtype": "Dynamic Link", "label": "Канальный чат", "options": "channel_doctype", "read_only": 1, "search_index": 1},
+```
+
+и обновить `"modified"` (сейчас дата, поставить текущую: `"2026-09-29 18:00:00.000000"`).
+
+В `events.record`: перед `doc = frappe.get_doc(` добавить `channel = context.get("channel_chat") or (None, None)`, и в словарь документа после `"turn_id": ...`:
+
+```python
+				"channel_doctype": channel[0],
+				"channel_name": channel[1],
+```
+
+В `events.recent`: после блока `if customer:` добавить
+
+```python
+	channel = context.get("channel_chat")
+	if channel:
+		or_filters.append(["channel_name", "=", channel[1]])
+```
+
+- [ ] **Step 4: Метки в реестре и модулях**
+
+`agent/registry.py`: импорт `from dataclasses import dataclass, field`; в `Module` после `pin: tuple` добавить
+
+```python
+	labels: dict = field(default_factory=dict)
+```
+
+и в докстринг: «labels — {инструмент: метка} для записи «Бот ответил: …»; метка берётся из фактически вызванных инструментов». В конец файла:
+
+```python
+def tool_labels(modules):
+	"""Метки инструментов всех переданных модулей одним словарём."""
+	labels = {}
+	for module in modules:
+		labels.update(module.labels)
+	return labels
+```
+
+`agent/base.py` (новый):
+
+```python
+"""Базовый модуль: справочные инструменты, которые есть у любого бота.
+
+Своих стадий и обязательств у него нет — только метки для записи «Бот
+ответил: меню». Включён всегда: без него ответ по меню в журнале был бы
+безымянным.
+"""
+
+from habibi_ai.agent import registry
+
+MODULE = registry.register(
+	registry.Module(
+		name="base",
+		feature=None,
+		stage=None,
+		commitments=(),
+		pin=(),
+		labels={"get_menu": "меню", "get_working_hours": "режим работы", "get_delivery_zones": "зоны доставки"},
+	)
+)
+```
+
+`agent/orders.py`: в `Module(...)` добавить `labels={"quote_order": "расчёт", "create_order": "заказ"},`.
+
+`agent/__init__.py`: добавить строку `from habibi_ai.agent import base  # noqa: E402,F401  регистрация при импорте пакета`.
+
+Проверка: `state.render` берёт стадии только у модулей с `stage`, поэтому `base` без стадии не порождает пустой блок «Ход дел»; проверить тестом `test_без_модулей_со_стадиями_блока_нет` (уже есть).
+
+- [ ] **Step 5: `loop.run` — список инструментов**
+
+В `run`: в начале тела `used = []`; после каждого `execute(...)` — обычного и довыполнения — `used.append(<имя>)`; заменить `_answer`:
+
+```python
+def _answer(text, debug, step_result, used=()):
+	answer = {"response": text, "debug": debug}
+	if step_result.get("persisted") is False:
+		answer["unpersisted"] = True
+	# Какие инструменты реально вызывались: из них код собирает метку ответа
+	# в журнале. Ключа нет, если инструментов не было — прежний формат не меняется.
+	if used:
+		answer["tools"] = list(dict.fromkeys(used))
+	return answer
+```
+
+Во всех вызовах `_answer(...)` в `run` последним аргументом передать `used`. Обычное исполнение: `content = execute(result["name"], ...)` внутри ветки «предложен» — сразу после него `used.append(result["name"])`; довыполнение: после `content = execute(violated.fulfil, {})` — `used.append(violated.fulfil)`.
+
+- [ ] **Step 6: `run_turn` — реплики и метки**
+
+В `api.py`: импорт `from habibi_ai.agent import tool_labels`  (добавить в `agent/__init__.py`: `from habibi_ai.agent.registry import active, register, tool_labels  # noqa: F401`).
+
+В `run_turn` после `known = ...` и до `loop.run`:
+
+```python
+	if channel_chat is None:
+		# Консоль кабинета: у неё нет Telegram Message, реплику клиента пишем здесь.
+		# Канал пишет её сам хуком — иначе она была бы записана дважды.
+		_safely(
+			lambda: events.record("message_in", "Клиент написал сообщение", actor="Client", context=context),
+			None,
+			"ИИ: журнал событий",
+		)
+```
+
+После блока `if result.pop("unpersisted", False): ...` и до `result["turn_id"] = ...`:
+
+```python
+	labels = tool_labels(modules)
+	tags = [labels[t] for t in result.get("tools", []) if t in labels]
+	_safely(
+		lambda: events.record(
+			"message_out",
+			"Бот ответил" + (f": {', '.join(dict.fromkeys(tags))}" if tags else ""),
+			context=context,
+			data={"tools": result.get("tools", []), "tags": tags},
+		),
+		None,
+		"ИИ: журнал событий",
+	)
+```
+
+`result.get("tools")` — ключ остаётся в результате, потребителей, кроме этой функции, у него нет; убрать перед возвратом: `result.pop("tools", None)` после записи события (тест `test_текст_с_первого_шага` цикла не затрагивается, он на уровне `loop.run`).
+
+- [ ] **Step 7: Хук канала**
+
+В `channels/telegram.py`: импорт `from habibi_ai import events` (рядом с прочими импортами `habibi_ai`). В `_on_message_insert` после проверки `_chat_is_answerable`:
+
+```python
+	channel_chat = ("Telegram Chat", doc.chat)
+```
+
+в ветке `if doc.direction == "Outgoing":` заменить условие паузы на
+
+```python
+		if decisions.should_pause(message, now) and not _ai_is_sending(channel, doc.chat):
+			# Реплика оператора — событие: бот, вернувшись, видит, что диалог вёл человек
+			events.record(
+				"message_staff",
+				"Сотрудник ответил клиенту, бот на паузе",
+				actor="Operator",
+				context={"channel_chat": channel_chat},
+				ref=("Telegram Message", doc.name),
+			)
+			pause(channel, doc.chat, REASON_OPERATOR)
+		return
+```
+
+и перед строкой `pair = frappe.db.get_value(PAIR, ...` (входящее):
+
+```python
+	events.record(
+		"message_in",
+		"Клиент написал сообщение",
+		actor="Client",
+		context={"channel_chat": channel_chat},
+		ref=("Telegram Message", doc.name),
+	)
+```
+
+Запись события идёт до решения бота «отвечать или нет»: реплика клиента — факт независимо от того, ответит ли бот.
+
+- [ ] **Step 8: Миграция и прогон**
+
+Run:
+```bash
+cd /Users/fsa/Projects/habibi/habibi_ai && python3 -m unittest habibi_ai.tests.test_agent_commitments habibi_ai.tests.test_agent_state habibi_ai.tests.test_loop habibi_ai.tests.test_engine
+docker exec devcontainer-frappe-1 bash -lc 'cd /workspace/development/frappe-bench && bench --site dev.localhost migrate && for m in test_events test_api test_orders test_telegram_bridge test_cabinet_orders test_tools; do bench --site dev.localhost run-tests --module habibi_ai.tests.$m || exit 1; done'
+cd /Users/fsa/Projects/habibi/habibi_ai && ruff check habibi_ai && ruff format --check habibi_ai
+```
+Expected: всё PASS, линт чист.
+
+- [ ] **Step 9: Commit**
+
+```bash
+git add habibi_ai
+git commit -m "feat(events): реплики клиента, бота и сотрудника в журнале, метки ответа по вызванным инструментам
 
 Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
