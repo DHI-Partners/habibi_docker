@@ -21,6 +21,10 @@
 
 7. **Реплики и метки** (решение владельца, 2026-09-29): журнал ведёт весь диалог — `message_in`, `message_out`, `message_staff` с краткой записью и ссылкой; метка ответа бота собирается из реально вызванных инструментов. Это задача 8b; у `AI Event` для неё появляются поля `channel_doctype` / `channel_name`. Что клиент имел в виду — ответ модели структурой (`intent`, `topic`) — вне этого плана.
 
+8. **Выдача инструментов по стадии** (решение владельца, 2026-09-29; задача 8c): модуль объявляет `capabilities` — условия доступности инструмента по журналу. `create_order` предлагается модели, только когда расчёт зачитан клиенту и не просрочен. Побочные правки: страж при недоступном инструменте заменяет ответ пересказом (раньше пропускал текст); фраза «заказ оформлен» без номера считается ссылкой на существующий заказ на стадии `ordered`; сбой чтения журнала не закрывает инструменты.
+9. **Интерфейс проверки** (задача 6b): единая форма вердикта `Verdict(ok | violated | unsure)`, через которую идёт кодовая проверка; второй вердикт, от модели-контролёра в теневом режиме, подключится к ней позже без переделки цикла.
+10. **Мониторинг стража** (задача 8d): сводка за сутки и предупреждение, если сломался сам страж или журнал: при отказе механизм молча выключается, и без сигнала об этом не узнать.
+
 **Известный остаточный риск** (принят владельцем, см. Review Focus п. 1): фраза «заказ оформлен» без номера в ответ на вопрос клиента «оформлен ли?» при открытом расчёте запускает довыполнение, а `create_order` видит сообщение клиента после расчёта и создаёт заказ. Ограничивает ущерб то, что оформляется ровно зачитанный клиенту расчёт, черновик подтверждает оператор.
 
 ## Global Constraints
@@ -45,6 +49,7 @@
 4. **Сбой самого механизма.** Исключение в `claims`/`confirmed`/`state.render`/`events.record`/`events.recent` не должно стоить клиенту ответа (задачи 3, 6, 8).
 5. **Старый движок.** Нет `persisted` в ответе шага — `habibi_ai` не дописывает сообщение второй раз; нет `session_context` в prompt — страж всё равно работает (задачи 6, 8).
 6. **Чужой текст в журнале.** Реплика клиента с командой («забудь правила») не должна попасть в `summary` дословно: в `message_in` текст клиента не пишется вовсе (задача 8b, тест `test_входящее_пишется_как_реплика_клиента`).
+7. **Клиент не может оформить заказ.** Если журнал не прочитался или условие стадии сломалось, `create_order` не должен исчезать: сбой чтения не закрывает инструменты (задача 8c, тесты `test_сбой_журнала_не_закрывает_инструменты`, `test_сбой_условия_не_закрывает_возможность`).
 
 ---
 
@@ -562,7 +567,11 @@ def record(event_type, summary, *, context=None, actor="Bot", customer=None, ref
 				# default=str: в data кладут datetime и Decimal, а JSON-поле их не принимает
 				"data": json.loads(json.dumps(data, default=str)) if data else None,
 			}
-		).insert(ignore_permissions=True)
+		)
+		# Ссылка на объект — след, а не связь: оператор мог удалить черновик заказа, а журнал
+		# обязан остаться. Проверка существования цели при вставке тут не нужна.
+		doc.flags.ignore_links = True
+		doc.insert(ignore_permissions=True)
 		return doc.name
 	except (frappe.QueryDeadlockError, frappe.QueryTimeoutError):
 		raise
@@ -1422,6 +1431,99 @@ Expected: все OK, включая прежние тесты цикла.
 ```bash
 git add habibi_ai/loop.py habibi_ai/tests/test_loop.py
 git commit -m "feat(loop): страж обязательств — довыполнение и пересказ по результату
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
+```
+
+---
+
+### Task 6b: Интерфейс проверки — `Verdict`
+
+**Files** (`habibi_ai`, без `frappe`):
+- Create: `habibi_ai/agent/checks.py`
+- Modify: `habibi_ai/loop.py` (`_violated` идёт через `check_commitment`)
+- Test: `habibi_ai/tests/test_agent_commitments.py` (новый класс)
+
+**Interfaces:**
+- Produces: `checks.OK`, `checks.VIOLATED`, `checks.UNSURE` (строки); `checks.Verdict(status, reason="")`; `checks.check_commitment(commitment, text, turn, known) -> Verdict`. Поведение цикла не меняется: нарушением считается `status == VIOLATED`; `UNSURE` цикл пропускает как `OK`. Так вердикт второй модели позже подключится тем же типом.
+
+- [ ] **Step 1: Failing tests**
+
+Добавить в `habibi_ai/tests/test_agent_commitments.py` (импорт `from habibi_ai.agent import checks`):
+
+```python
+class TestВердикт(unittest.TestCase):
+	def test_нет_утверждения_ok(self):
+		self.assertEqual(checks.check_commitment(C, "Есть Classic Burger", [], frozenset()).status, checks.OK)
+
+	def test_подтверждённое_утверждение_ok(self):
+		verdict = checks.check_commitment(C, f"Заказ {N1} создан", _turn(CREATED), frozenset())
+		self.assertEqual(verdict.status, checks.OK)
+
+	def test_неподтверждённое_утверждение_нарушение_с_причиной(self):
+		verdict = checks.check_commitment(C, f"Заказ {N1} создан", [], frozenset())
+		self.assertEqual(verdict.status, checks.VIOLATED)
+		self.assertIn(C.name, verdict.reason)
+```
+
+- [ ] **Step 2: Run — FAIL**
+
+Run: `cd /Users/fsa/Projects/habibi/habibi_ai && python3 -m unittest habibi_ai.tests.test_agent_commitments -v`
+Expected: FAIL — `ImportError: cannot import name 'checks'`.
+
+- [ ] **Step 3: Реализация**
+
+`habibi_ai/agent/checks.py`:
+
+```python
+"""Вердикт проверки: единая форма для кода и, позже, для модели-контролёра.
+
+Сейчас утверждения проверяет только код (Commitment). Второй проверяющий —
+модель в теневом режиме, которая пишет вердикты в журнал, но ничего не
+блокирует, — вернёт тот же Verdict, и цикл переделывать не придётся. Без frappe.
+"""
+
+from dataclasses import dataclass
+
+OK = "ok"
+VIOLATED = "violated"
+UNSURE = "unsure"
+
+
+@dataclass(frozen=True)
+class Verdict:
+	"""status — OK, VIOLATED или UNSURE; reason — для журнала и оператора."""
+
+	status: str
+	reason: str = ""
+
+
+def check_commitment(commitment, text, turn, known):
+	"""Кодовая проверка обязательства: не заявлено или подтверждено — OK, иначе VIOLATED."""
+	if not commitment.claims(text):
+		return Verdict(OK)
+	if commitment.confirmed(text, turn, known):
+		return Verdict(OK)
+	return Verdict(VIOLATED, f"утверждение не подтверждено ({commitment.name})")
+```
+
+`habibi_ai/loop.py`: добавить импорт `from habibi_ai.agent.checks import VIOLATED, check_commitment` и заменить условие в `_violated`:
+
+```python
+			if check_commitment(commitment, text, turn, known).status == VIOLATED:
+				return commitment
+```
+
+- [ ] **Step 4: Run — PASS**
+
+Run: `python3 -m unittest habibi_ai.tests.test_agent_commitments habibi_ai.tests.test_loop -v`
+Expected: все OK, прежние тесты цикла проходят без изменений.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add habibi_ai/agent/checks.py habibi_ai/loop.py habibi_ai/tests/test_agent_commitments.py
+git commit -m "feat(agent): Verdict — единая форма проверки утверждения
 
 Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
@@ -2321,6 +2423,406 @@ Expected: всё PASS, линт чист.
 ```bash
 git add habibi_ai
 git commit -m "feat(events): реплики клиента, бота и сотрудника в журнале, метки ответа по вызванным инструментам
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
+```
+
+---
+
+### Task 8c: Инструменты по стадии
+
+**Files** (`habibi_ai`):
+- Modify: `habibi_ai/agent/registry.py` (`Capability`, `Module.capabilities`, `blocked_tools`)
+- Modify: `habibi_ai/agent/state.py` (`stage_names`)
+- Modify: `habibi_ai/agent/orders.py` (возможность `create_order`, фраза без номера на стадии `ordered`)
+- Modify: `habibi_ai/agent/__init__.py` (реэкспорт)
+- Modify: `habibi_ai/loop.py` (недоступный инструмент довыполнения → пересказ)
+- Modify: `habibi_ai/api.py` (`run_turn`)
+- Test: `tests/test_agent_state.py`, `tests/test_agent_commitments.py`, `tests/test_loop.py`, `tests/test_api.py`
+
+**Interfaces:**
+- Consumes: `Module`, `stage`, `MODULE` (задачи 5, 7), `run_turn` (задачи 8, 8b).
+- Produces:
+  - `registry.Capability(tool, available)` — `available(events, now) -> bool`; `registry.Module(..., capabilities: tuple = ())`;
+  - `registry.blocked_tools(modules, events, now) -> set[str]` — инструменты, объявленные какой-либо возможностью, ни одна из которых не доступна; сбой условия считается «доступно»;
+  - `state.stage_names(events, modules, now) -> frozenset[str]` — множество `"stage:<имя>"` активных стадий;
+  - в `known` цикла попадают и номера объектов, и `stage:<имя>`.
+
+- [ ] **Step 1: Failing tests**
+
+`tests/test_agent_state.py` — импорт `from habibi_ai.agent import registry` и `from habibi_ai.agent.registry import Capability, Module`; добавить в конец:
+
+```python
+class TestВозможности(unittest.TestCase):
+	def _blocked(self, events):
+		return registry.blocked_tools([orders.MODULE], events, NOW)
+
+	def test_создание_закрыто_пока_нет_расчёта(self):
+		self.assertEqual(self._blocked([]), {"create_order"})
+
+	def test_создание_открыто_когда_расчёт_зачитан(self):
+		self.assertEqual(self._blocked([quote(5), ev("quote_delivered", 4, "AIQ-1")]), set())
+
+	def test_закрыто_если_расчёт_не_дошёл_до_клиента(self):
+		self.assertEqual(self._blocked([quote(5)]), {"create_order"})
+
+	def test_закрыто_если_расчёт_просрочен(self):
+		events = [quote(60, expires_in=30), ev("quote_delivered", 59, "AIQ-1")]
+		self.assertEqual(self._blocked(events), {"create_order"})
+
+	def test_закрыто_если_заказ_уже_создан(self):
+		events = [quote(9), ev("quote_delivered", 8, "AIQ-1"), ev("order_created", 3, "SAL-ORD-2026-00026")]
+		self.assertEqual(self._blocked(events), {"create_order"})
+
+	def test_сбой_условия_не_закрывает_возможность(self):
+		broken = Module(
+			name="b", feature=None, stage=None, commitments=(), pin=(),
+			capabilities=(Capability("x", lambda events, now: 1 / 0),),
+		)
+		self.assertEqual(registry.blocked_tools([broken], [], NOW), set())
+
+	def test_достаточно_одного_модуля_с_доступом(self):
+		closed = Module(name="a", feature=None, stage=None, commitments=(), pin=(), capabilities=(Capability("x", lambda e, n: False),))
+		opened = Module(name="b", feature=None, stage=None, commitments=(), pin=(), capabilities=(Capability("x", lambda e, n: True),))
+		self.assertEqual(registry.blocked_tools([closed, opened], [], NOW), set())
+
+	def test_инструмент_без_объявленной_возможности_не_закрывается(self):
+		self.assertNotIn("get_menu", self._blocked([]))
+
+
+class TestФактыСтадий(unittest.TestCase):
+	def test_стадия_заказа_в_фактах(self):
+		facts = state.stage_names([ev("order_created", 1, "SAL-ORD-2026-00001")], [orders.MODULE], NOW)
+		self.assertEqual(facts, frozenset({"stage:ordered"}))
+```
+
+`tests/test_agent_commitments.py` — в `TestПодтверждение`:
+
+```python
+	def test_фраза_без_номера_на_стадии_заказа_это_ссылка_на_него(self):
+		self.assertTrue(C.confirmed("Заказ оформлен", [], frozenset({"stage:ordered"})))
+
+	def test_фраза_без_номера_на_стадии_расчёта_нужен_результат_хода(self):
+		self.assertFalse(C.confirmed("Заказ оформлен", [], frozenset({"stage:quoted"})))
+```
+
+`tests/test_loop.py` — тест `test_довыполнение_только_если_инструмент_предложен` заменить:
+
+```python
+	def test_инструмент_довыполнения_не_предложен_клиенту_пересказ_кода(self):
+		# Инструмент недоступен по стадии: действия не будет, и ложь наружу не выходит
+		step = _step({"type": "text", "content": "Заказ оформлен"})
+		execute = Mock()
+		events = []
+		result = self._run(step, execute=execute, offered=("get_menu",), on_event=events.append)
+		execute.assert_not_called()
+		self.assertEqual(result["response"], "РЕКАП")
+		self.assertEqual([e["kind"] for e in events], ["violated"])
+```
+
+`tests/test_api.py` — в классе с `_client_answering` (импорты `from frappe.utils import add_to_date, now_datetime`, `from habibi_ai import events`):
+
+```python
+	def _offered(self, client):
+		return [t["name"] for t in client.step.call_args.kwargs["tools"]]
+
+	def test_создание_заказа_не_предлагается_без_показанного_расчёта(self):
+		client = self._client_answering("ok")
+		api.run_turn(client, 5, "привет")
+		self.assertNotIn("create_order", self._offered(client))
+		self.assertIn("quote_order", self._offered(client))
+
+	def test_создание_заказа_предлагается_после_показа_расчёта(self):
+		events.record(
+			"quote_created", "Расчёт", context={"engine_chat_id": 5}, ref=("AI Order Quote", "AIQ-T"),
+			data={"expires_on": add_to_date(now_datetime(), minutes=20)},
+		)
+		events.record("quote_delivered", "Расчёт зачитан", actor="System", context={"engine_chat_id": 5}, ref=("AI Order Quote", "AIQ-T"))
+		client = self._client_answering("ok")
+		api.run_turn(client, 5, "да")
+		self.assertIn("create_order", self._offered(client))
+
+	def test_сбой_журнала_не_закрывает_инструменты(self):
+		client = self._client_answering("ok")
+		with patch("habibi_ai.api.events.recent", side_effect=RuntimeError("сбой")), patch("habibi_ai.api.frappe.log_error"):
+			api.run_turn(client, 5, "привет")
+		self.assertIn("create_order", self._offered(client))
+```
+
+В существующем тесте `test_сбой_флагов_предлагает_инструменты_как_раньше` ожидание `set(api._tool_names())` заменить на `set(api._tool_names()) - {"create_order"}` (журнал пуст — расчёта нет — создание закрыто), с комментарием: «флаги не прочитались — включено всё, кроме того, что закрыто стадией».
+
+- [ ] **Step 2: Run — FAIL**
+
+Run: `cd /Users/fsa/Projects/habibi/habibi_ai && python3 -m unittest habibi_ai.tests.test_agent_state habibi_ai.tests.test_agent_commitments habibi_ai.tests.test_loop -v`
+и `docker exec devcontainer-frappe-1 bash -lc 'cd /workspace/development/frappe-bench && bench --site dev.localhost run-tests --module habibi_ai.tests.test_api'`
+Expected: новые тесты FAIL, остальные PASS.
+
+- [ ] **Step 3: Реестр и проекция**
+
+`agent/registry.py`: добавить
+
+```python
+@dataclass(frozen=True)
+class Capability:
+	"""tool — имя инструмента; available(events, now) -> bool — открыт ли он клиенту
+	при таком журнале. Решает код по фактам: модель просить открыть не может."""
+
+	tool: str
+	available: Callable
+```
+
+в `Module` после `labels` — `capabilities: tuple = ()`; в конец файла:
+
+```python
+def blocked_tools(modules, events, now):
+	"""Инструменты, которые сейчас нельзя предлагать модели.
+
+	Закрыт только тот, что объявлен возможностью, и ни одна из возможностей
+	не доступна. Сбой условия считается «доступно»: нерабочая проверка не
+	должна лишать клиента инструмента.
+	"""
+	declared, allowed = set(), set()
+	for module in modules:
+		for capability in module.capabilities:
+			declared.add(capability.tool)
+			try:
+				opened = capability.available(events, now)
+			except Exception:
+				opened = True
+			if opened:
+				allowed.add(capability.tool)
+	return declared - allowed
+```
+
+`agent/state.py`: в конец
+
+```python
+def stage_names(events, modules, now):
+	"""Активные стадии как факты для стража: «stage:ordered».
+
+	Страж по ним отличает ссылку на существующий заказ («заказ оформлен» на
+	стадии ordered) от утверждения, что заказ создан прямо сейчас.
+	"""
+	return frozenset(f"stage:{stage.name}" for stage in _stages(modules, events, now))
+```
+
+`agent/orders.py`: в `_confirmed` заменить последнюю строку (фраза без номера)
+
+```python
+	# Фраза без номера: результат этого хода — или ссылка на уже существующий
+	# заказ, когда он последнее событие (стадия ordered) и открытого расчёта нет
+	return bool(created) or "stage:ordered" in known
+```
+
+и в `MODULE = registry.register(Module(...))` добавить `capabilities=(Capability("create_order", lambda events, now: stage(events, now).name == "quoted"),),` с импортом `Capability` из `habibi_ai.agent.registry`.
+
+`agent/__init__.py`: `from habibi_ai.agent.registry import active, blocked_tools, register, tool_labels  # noqa: F401`.
+
+- [ ] **Step 4: `loop.run` и `run_turn`**
+
+`loop.py`: в ветке нарушения заменить
+
+```python
+			if violated.fulfil not in offered:
+				return _answer(text, collected_debug, result, used)
+```
+
+на
+
+```python
+			if violated.fulfil not in offered:
+				# Инструмент недоступен (стадия не та): действия не будет, а
+				# ложное утверждение наружу выходить не должно
+				return _answer(_recap(violated, turn), collected_debug, result, used)
+```
+
+`api.py` (`run_turn`): история читается как раньше, но при сбое даёт `None`, а не `[]`; после расчёта `known` и `session_text`:
+
+```python
+	history = _safely(lambda: events.recent(context), None, "ИИ: журнал событий")
+	now = frappe.utils.now_datetime()
+	events_now = history or []
+	session_text = _safely(lambda: agent_state.render(events_now, modules, now), "", "ИИ: ход дел")
+	facts = _safely(lambda: agent_state.stage_names(events_now, modules, now), frozenset(), "ИИ: ход дел")
+	known = frozenset(e["ref_name"] for e in events_now if e.get("ref_name")) | facts
+	if history is not None:
+		# Инструменты по стадии: открывает код по журналу, а не модель. Журнал не
+		# прочитался — ничего не закрываем: сбой не должен лишать клиента заказа
+		blocked = blocked_tools(modules, history, now)
+		offered = [name for name in offered if name not in blocked]
+```
+
+(импорт `from habibi_ai.agent import blocked_tools`; прежние строки, читавшие `history`, `session_text` и `known`, удалить — заменены этим блоком.)
+
+- [ ] **Step 5: Run — PASS и линт**
+
+Run:
+```bash
+cd /Users/fsa/Projects/habibi/habibi_ai && python3 -m unittest habibi_ai.tests.test_agent_state habibi_ai.tests.test_agent_commitments habibi_ai.tests.test_loop habibi_ai.tests.test_engine
+docker exec devcontainer-frappe-1 bash -lc 'cd /workspace/development/frappe-bench && for m in test_events test_api test_orders test_telegram_bridge test_cabinet_orders test_tools; do bench --site dev.localhost run-tests --module habibi_ai.tests.$m || exit 1; done'
+ruff check habibi_ai && ruff format --check habibi_ai
+```
+Expected: всё PASS, включая регрессию на инциденте: на стадии `quoted` создание открыто и страж его довыполняет.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add habibi_ai
+git commit -m "feat(agent): инструменты по стадии — create_order открывается только после показанного расчёта
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
+```
+
+---
+
+### Task 8d: Мониторинг стража и журнала
+
+**Files** (`habibi_ai`):
+- Modify: `habibi_ai/events.py` (`guard_stats`)
+- Create: `habibi_ai/monitoring.py`
+- Modify: `habibi_ai/hooks.py` (`scheduler_events`)
+- Modify: `habibi_ai/api.py` (whitelisted `guard_stats`)
+- Test: `habibi_ai/tests/test_events.py`
+
+**Interfaces:**
+- Produces: `events.guard_stats(hours=24) -> dict` с ключами `hours`, `violated`, `fulfilled`, `errors` (записи Error Log механизма за период); `monitoring.daily_report()`; `habibi_ai.api.guard_stats(hours=24)` — только для System Manager.
+
+Зачем: страж и журнал сбой не прощают молча — при их отказе ход идёт без защиты, и без сигнала об этом не узнать.
+
+- [ ] **Step 1: Failing tests**
+
+Добавить в `habibi_ai/tests/test_events.py`:
+
+```python
+class TestСводка(IntegrationTestCase):
+	def tearDown(self):
+		frappe.db.delete("AI Event", {"engine_chat_id": CHAT})
+		frappe.db.delete("Error Log", {"method": "ИИ: сбой стража"})
+		super().tearDown()
+
+	def test_считает_нарушения_и_довыполнения_за_период(self):
+		events.record("commitment_violated", "нарушение", actor="System", context={"engine_chat_id": CHAT})
+		events.record("commitment_violated", "нарушение", actor="System", context={"engine_chat_id": CHAT})
+		events.record("commitment_fulfilled", "довыполнено", actor="System", context={"engine_chat_id": CHAT})
+		stats = events.guard_stats(hours=1)
+		self.assertGreaterEqual(stats["violated"], 2)
+		self.assertGreaterEqual(stats["fulfilled"], 1)
+
+	def test_считает_сбои_механизма(self):
+		before = events.guard_stats(hours=1)["errors"]
+		frappe.log_error(title="ИИ: сбой стража", message="проверка")
+		self.assertEqual(events.guard_stats(hours=1)["errors"], before + 1)
+
+	def test_сводка_за_сутки_предупреждает_о_сбое(self):
+		from habibi_ai import monitoring
+
+		frappe.log_error(title="ИИ: сбой стража", message="проверка")
+		with patch("habibi_ai.monitoring.frappe.log_error") as log_error:
+			monitoring.daily_report()
+		log_error.assert_called_once()
+
+	def test_без_сбоев_сводка_молчит(self):
+		from habibi_ai import monitoring
+
+		frappe.db.delete("Error Log", {"method": ["in", list(events.ERROR_TITLES)]})
+		with patch("habibi_ai.monitoring.frappe.log_error") as log_error:
+			monitoring.daily_report()
+		log_error.assert_not_called()
+```
+
+- [ ] **Step 2: Run — FAIL**
+
+Run: `docker exec devcontainer-frappe-1 bash -lc 'cd /workspace/development/frappe-bench && bench --site dev.localhost run-tests --module habibi_ai.tests.test_events'`
+Expected: новые тесты FAIL (`guard_stats`, `monitoring` не существуют).
+
+- [ ] **Step 3: Реализация**
+
+`events.py`: в конец
+
+```python
+# Заголовки Error Log, которые пишет сам механизм: по ним считаются его сбои
+ERROR_TITLES = ("ИИ: журнал событий", "ИИ: ход дел", "ИИ: сбой стража")
+
+
+def guard_stats(hours=24):
+	"""Сводка стража и журнала за период: сколько раз он ловил ложь и сколько раз ломался."""
+	since = frappe.utils.add_to_date(frappe.utils.now_datetime(), hours=-hours)
+	counts = {
+		row.event_type: row.n
+		for row in frappe.get_all(
+			DOCTYPE,
+			filters={
+				"occurred_at": [">=", since],
+				"event_type": ["in", ["commitment_violated", "commitment_fulfilled"]],
+			},
+			fields=["event_type", "count(name) as n"],
+			group_by="event_type",
+		)
+	}
+	errors = frappe.db.count("Error Log", {"creation": [">=", since], "method": ["in", list(ERROR_TITLES)]})
+	return {
+		"hours": hours,
+		"violated": counts.get("commitment_violated", 0),
+		"fulfilled": counts.get("commitment_fulfilled", 0),
+		"errors": errors,
+	}
+```
+
+`habibi_ai/monitoring.py`:
+
+```python
+"""Ежедневная сводка стража и журнала событий.
+
+Страж и журнал при сбое молча отключаются — ход идёт без них, а клиент ничего
+не замечает. Поэтому их собственные сбои и число нарушений за сутки
+поднимаются в Error Log, где их видит администратор.
+"""
+
+import frappe
+
+from habibi_ai import events
+
+
+def daily_report():
+	stats = events.guard_stats(hours=24)
+	frappe.logger("habibi_ai").info(f"ИИ: страж за сутки: {stats}")
+	if stats["errors"]:
+		frappe.log_error(
+			title="ИИ: страж и журнал за сутки",
+			message=(
+				f"Сбоев механизма: {stats['errors']}. Нарушений, пойманных стражем: {stats['violated']}, "
+				f"довыполнено: {stats['fulfilled']}. Пока механизм сломан, ходы идут без защиты."
+			),
+		)
+```
+
+`hooks.py`: добавить
+
+```python
+# Сводка стража и журнала раз в сутки: при их сбое ход идёт без защиты молча
+scheduler_events = {"daily": ["habibi_ai.monitoring.daily_report"]}
+```
+
+`api.py`: добавить
+
+```python
+@frappe.whitelist()
+def guard_stats(hours=24):
+	"""Сводка стража за период — для администратора: сколько раз он ловил ложь и ломался."""
+	frappe.only_for("System Manager")
+	return events.guard_stats(int(hours))
+```
+
+- [ ] **Step 4: Run — PASS и линт**
+
+Run: `docker exec devcontainer-frappe-1 bash -lc 'cd /workspace/development/frappe-bench && bench --site dev.localhost run-tests --module habibi_ai.tests.test_events' && cd /Users/fsa/Projects/habibi/habibi_ai && ruff check habibi_ai && ruff format --check habibi_ai`
+Expected: PASS, линт чист.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add habibi_ai/events.py habibi_ai/monitoring.py habibi_ai/hooks.py habibi_ai/api.py habibi_ai/tests/test_events.py
+git commit -m "feat(monitoring): сводка стража и журнала за сутки, предупреждение при сбое механизма
 
 Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
