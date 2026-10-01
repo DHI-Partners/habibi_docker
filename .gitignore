@@ -45,3 +45,4 @@ node_modules
 
 # Артефакты Playwright MCP (снимки, логи консоли)
 .playwright-mcp/
+.superpowers/
