@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Stock Role Playbook</title>
+</head>
+<body>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0}
+img,svg,video{max-width:100%;height:auto;display:block}
+button,input,select,textarea{font:inherit;color:inherit}
+table{border-collapse:collapse}
+:root{
+  --ground:#F2EEE8; --surface:#FBF8F4; --sunken:#E8E2D9; --rule:#D6CDC0; --rule-soft:#E3DCD2;
+  --ink:#221C16; --ink-2:#544A40; --ink-3:#867A6D;
+  --brass:#A8500F; --brass-ink:#A8500F; --brass-soft:#F6E3D2; --brass-line:#E4C6AB;
+  --ok:#2E6B4A; --ok-soft:#DDEBE2;
+  --bad:#A6362D; --bad-soft:#F5DED9;
+  --warn:#8E5C0E; --warn-soft:#F4E7CE;
+  --r-wh:#2A5E7A;  --r-wh-bg:#DCE9F0;
+  --r-st:#9A2F2F;  --r-st-bg:#F6DEDC;
+  --r-sys:#6B4E75; --r-sys-bg:#EBE1EE;
+  --shadow:0 1px 2px rgba(34,28,22,.06), 0 8px 24px -16px rgba(34,28,22,.3);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --ground:#17130F; --surface:#201A15; --sunken:#2A231C; --rule:#372E26; --rule-soft:#2C251E;
+    --ink:#EDE7DF; --ink-2:#AEA396; --ink-3:#7A6F63;
+    --brass:#E08A45; --brass-ink:#EC9C5C; --brass-soft:#3A2110; --brass-line:#523018;
+    --ok:#5FC493; --ok-soft:#152C21;
+    --bad:#E8776B; --bad-soft:#341B18;
+    --warn:#D9A03F; --warn-soft:#2F2410;
+    --r-wh:#7FB6D6;  --r-wh-bg:#152834;
+    --r-st:#E8776B;  --r-st-bg:#361C1A;
+    --r-sys:#BFA0C9; --r-sys-bg:#291F2D;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px -16px rgba(0,0,0,.8);
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#17130F; --surface:#201A15; --sunken:#2A231C; --rule:#372E26; --rule-soft:#2C251E;
+  --ink:#EDE7DF; --ink-2:#AEA396; --ink-3:#7A6F63;
+  --brass:#E08A45; --brass-ink:#EC9C5C; --brass-soft:#3A2110; --brass-line:#523018;
+  --ok:#5FC493; --ok-soft:#152C21;
+  --bad:#E8776B; --bad-soft:#341B18;
+  --warn:#D9A03F; --warn-soft:#2F2410;
+  --r-wh:#7FB6D6;  --r-wh-bg:#152834;
+  --r-st:#E8776B;  --r-st-bg:#361C1A;
+  --r-sys:#BFA0C9; --r-sys-bg:#291F2D;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px -16px rgba(0,0,0,.8);
+}
+body{background:var(--ground);color:var(--ink);
+  font-family:"IBM Plex Sans","Segoe UI",system-ui,-apple-system,sans-serif;
+  font-size:15px;line-height:1.6;margin:0;-webkit-font-smoothing:antialiased}
+h1,h2,h3,h4{font-family:"IBM Plex Sans Condensed","IBM Plex Sans",system-ui,sans-serif;font-weight:700;text-wrap:balance;margin:0;letter-spacing:-.005em}
+code,.mono{font-family:"IBM Plex Mono",ui-monospace,Menlo,monospace}
+a{color:var(--brass-ink)}
+.wrap{max-width:1200px;margin-inline:auto;padding-inline:28px}
+@media (max-width:640px){.wrap{padding-inline:16px}}
+.topbar{position:sticky;top:0;z-index:50;background:color-mix(in srgb,var(--ground) 88%,transparent);
+  backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-bottom:1px solid var(--rule)}
+.topbar-in{display:flex;align-items:center;gap:20px;padding:13px 0;flex-wrap:wrap}
+.brandmark{display:flex;align-items:baseline;gap:10px;margin-right:auto}
+.brandmark .nm{font-family:"IBM Plex Sans Condensed",sans-serif;font-weight:700;font-size:19px}
+.brandmark .sub{font-family:"IBM Plex Mono",monospace;font-size:10.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--ink-3)}
+.meter{display:flex;align-items:center;gap:11px}
+.meter-track{width:140px;height:5px;border-radius:99px;background:var(--sunken);overflow:hidden}
+.meter-fill{height:100%;width:0%;background:var(--brass);border-radius:99px;transition:width .3s ease}
+.meter-num{font-family:"IBM Plex Mono",monospace;font-size:12px;font-variant-numeric:tabular-nums;color:var(--ink-2);white-space:nowrap}
+.btn{font:inherit;font-size:12.5px;font-weight:500;cursor:pointer;background:var(--surface);color:var(--ink-2);
+  border:1px solid var(--rule);border-radius:6px;padding:6px 12px}
+.btn:hover{border-color:var(--ink-3);color:var(--ink)}
+.btn:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
+.btn.on{background:var(--brass-soft);border-color:var(--brass-line);color:var(--brass-ink)}
+.mast{padding:54px 0 38px;border-bottom:1px solid var(--rule)}
+.eyebrow{font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--brass-ink);margin-bottom:16px}
+.mast h1{font-size:clamp(34px,5.2vw,49px);line-height:1.05;max-width:18ch}
+.mast .lede{margin-top:18px;max-width:66ch;font-size:16.5px;color:var(--ink-2)}
+.chip{display:inline-flex;align-items:center;gap:5px;font-family:"IBM Plex Mono",monospace;font-size:10px;
+  letter-spacing:.09em;text-transform:uppercase;font-weight:600;padding:2.5px 7px;border-radius:4px;white-space:nowrap;vertical-align:middle}
+.chip.wh{background:var(--r-wh-bg);color:var(--r-wh);border:1px solid var(--r-wh)}
+.chip.st{background:var(--r-st-bg);color:var(--r-st);border:1px solid var(--r-st)}
+.chip.sys{background:var(--r-sys-bg);color:var(--r-sys);border:1px solid var(--r-sys)}
+.chip.any{background:var(--sunken);color:var(--ink-3);border:1px solid var(--rule)}
+.cast{display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:14px;margin:34px 0 6px}
+.role{background:var(--surface);border:1px solid var(--rule);border-radius:10px;padding:16px 17px;border-top:3px solid var(--rule)}
+.role.wh{border-top-color:var(--r-wh)} .role.st{border-top-color:var(--r-st)}
+.role.sys{border-top-color:var(--r-sys)}
+.role h4{font-size:15.5px;margin:9px 0 3px}
+.role .erp{font-family:"IBM Plex Mono",monospace;font-size:11.5px;color:var(--ink-3);margin-bottom:9px}
+.role p{margin:0;font-size:13.5px;color:var(--ink-2)}
+.panel{background:var(--surface);border:1px solid var(--rule);border-radius:10px;padding:22px 24px;margin-top:26px}
+.panel h3{font-size:16px;margin-bottom:12px}
+.panel p{margin:0 0 11px;color:var(--ink-2);font-size:14.5px}
+.panel p:last-child{margin-bottom:0}
+.panel ol,.panel ul{margin:0;padding-left:19px;color:var(--ink-2);font-size:14.5px}
+.panel li{margin-bottom:7px}
+.panel code{background:var(--sunken);padding:1px 5px;border-radius:4px;font-size:12.5px;border:1px solid var(--rule-soft);font-family:"IBM Plex Mono",monospace}
+.modes{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+@media (max-width:880px){.modes{grid-template-columns:1fr}}
+.shell{display:grid;grid-template-columns:206px 1fr;gap:54px;align-items:start;padding:42px 0 90px}
+@media (max-width:1000px){.shell{grid-template-columns:1fr;gap:0}.rail{display:none}}
+.rail{position:sticky;top:74px}
+.rail-h{font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);padding-bottom:11px;border-bottom:1px solid var(--rule)}
+.rail a{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:9px;padding:8px 0;
+  text-decoration:none;color:var(--ink-2);border-bottom:1px solid var(--rule-soft);font-size:13px}
+.rail a:hover{color:var(--ink)}
+.rail a:focus-visible{outline:2px solid var(--brass);outline-offset:2px;border-radius:3px}
+.dot{width:7px;height:7px;border-radius:99px;border:1.5px solid var(--ink-3);flex:none}
+.rail a.done .dot{background:var(--ok);border-color:var(--ok)}
+.rail a.part .dot{background:var(--brass);border-color:var(--brass);opacity:.55}
+.rail .ct{font-family:"IBM Plex Mono",monospace;font-size:10px;color:var(--ink-3);font-variant-numeric:tabular-nums}
+.part{padding-top:12px;margin-bottom:50px;scroll-margin-top:80px}
+.part-head{border-top:2px solid var(--ink);padding-top:13px;margin-bottom:24px}
+.part-code{font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.15em;text-transform:uppercase;
+  color:var(--brass-ink);display:flex;gap:12px;align-items:center;margin-bottom:8px;flex-wrap:wrap}
+.part-code .rulefill{flex:1;height:1px;background:var(--rule);min-width:20px}
+.part h2{font-size:26px;line-height:1.15}
+.part .purpose{margin-top:8px;color:var(--ink-2);max-width:68ch;font-size:15px}
+.part .purpose code{background:var(--sunken);padding:1px 5px;border-radius:4px;font-size:12.5px;border:1px solid var(--rule-soft);font-family:"IBM Plex Mono",monospace}
+.proc{background:var(--surface);border:1px solid var(--rule);border-radius:10px;padding:17px 19px;margin-bottom:12px;box-shadow:var(--shadow)}
+.proc.checked{background:var(--sunken);border-color:var(--rule-soft)}
+.proc-top{display:flex;align-items:flex-start;gap:11px;flex-wrap:wrap}
+.proc-n{font-family:"IBM Plex Mono",monospace;font-size:11.5px;color:var(--ink-3);padding-top:4px;font-variant-numeric:tabular-nums;flex:none}
+.proc.checked .proc-n{color:var(--ok)}
+.proc-t{font-family:"IBM Plex Sans Condensed",sans-serif;font-weight:600;font-size:17.5px;line-height:1.3;margin:0;flex:1 1 240px;text-wrap:balance}
+.proc.checked .proc-t{color:var(--ink-3);text-decoration:line-through;text-decoration-thickness:1px}
+.proc-body{padding-left:29px}
+@media (max-width:600px){.proc-body{padding-left:0}}
+.path{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:11px;
+  font-family:"IBM Plex Mono",monospace;font-size:12px;
+  background:var(--sunken);border:1px solid var(--rule-soft);border-radius:6px;padding:7px 11px}
+.proc.checked .path{background:var(--ground)}
+.path .seg{color:var(--ink)}
+.path .sep{color:var(--ink-3)}
+.path .lead{color:var(--ink-3);text-transform:uppercase;letter-spacing:.1em;font-size:9.5px;margin-right:3px}
+.do{margin:12px 0 0;padding-left:19px;font-size:14.5px;color:var(--ink-2)}
+.do li{margin-bottom:6px}
+.do code,.step-note code,.gotcha code,.blocked code,.res-note code{background:var(--sunken);padding:1px 5px;border-radius:4px;font-size:12.5px;border:1px solid var(--rule-soft);font-family:"IBM Plex Mono",monospace}
+.proc.checked .do code{background:var(--ground)}
+.fields{margin-top:12px;border:1px solid var(--rule-soft);border-radius:7px;overflow:hidden}
+.frow{display:grid;grid-template-columns:minmax(125px,195px) 1fr;border-bottom:1px solid var(--rule-soft)}
+.frow:last-child{border-bottom:0}
+.frow>dt{padding:6px 12px;background:var(--sunken);font-size:12.5px;color:var(--ink-2);border-right:1px solid var(--rule-soft);display:flex;align-items:center}
+.proc.checked .frow>dt{background:var(--ground)}
+.frow>dd{margin:0;padding:4px 8px;display:flex;align-items:center;flex-wrap:min-width:0}
+.cp{font-family:"IBM Plex Mono",monospace;font-size:12.5px;color:var(--ink);background:none;border:1px solid transparent;
+  border-radius:4px;padding:2px 6px;cursor:copy;text-align:left;font-weight:500;max-width:100%;overflow-wrap:anywhere}
+.cp:hover{border-color:var(--rule);background:var(--sunken)}
+.cp:focus-visible{outline:2px solid var(--brass);outline-offset:1px}
+.cp.copied{color:var(--ok);border-color:var(--ok)}
+.fhint{font-size:12px;color:var(--ink-3);padding-left:6px;font-style:italic}
+@media (max-width:600px){.frow{grid-template-columns:1fr}.frow>dt{border-right:0;border-bottom:1px solid var(--rule-soft)}}
+.blocked{margin-top:11px;border-left:2px solid var(--bad);background:var(--bad-soft);padding:9px 13px;border-radius:0 6px 6px 0;font-size:13.5px}
+.blocked .lbl{font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:var(--bad);display:block;margin-bottom:2px;font-weight:600}
+.gotcha{margin-top:11px;border-left:2px solid var(--brass);background:var(--brass-soft);padding:9px 13px;border-radius:0 6px 6px 0;font-size:13.5px}
+.gotcha .lbl{font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:var(--brass-ink);display:block;margin-bottom:2px;font-weight:600}
+.result{margin-top:12px;display:grid;grid-template-columns:auto 1fr;gap:11px;align-items:start;
+  border-left:2px solid var(--ok);background:var(--ok-soft);padding:9px 13px;border-radius:0 6px 6px 0}
+.result input{margin:0;width:16px;height:16px;accent-color:var(--ok);cursor:pointer;flex:none;margin-top:2px}
+.result input:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
+.result label{cursor:pointer;font-size:13.5px;color:var(--ink)}
+.result .lbl{font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:var(--ok);display:block;margin-bottom:2px;font-weight:600}
+.tablewrap{overflow-x:auto;margin-top:16px;border:1px solid var(--rule);border-radius:8px}
+table{border-collapse:collapse;width:100%;font-size:13px;min-width:620px;background:var(--surface)}
+th,td{text-align:left;padding:7px 12px;border-bottom:1px solid var(--rule-soft);vertical-align:top}
+th{font-family:"IBM Plex Mono",monospace;font-size:9.5px;letter-spacing:.11em;text-transform:uppercase;color:var(--ink-3);background:var(--sunken);white-space:nowrap}
+tr:last-child td{border-bottom:0}
+td.dt{font-family:"IBM Plex Mono",monospace;font-size:12.5px;white-space:nowrap}
+td.p{font-family:"IBM Plex Mono",monospace;font-size:12px;letter-spacing:.06em}
+.hi{color:var(--bad);font-weight:600}
+.good{color:var(--ok);font-weight:600}
+footer{border-top:1px solid var(--rule);padding:26px 0 60px;color:var(--ink-3);font-size:13px}
+footer code{background:var(--sunken);padding:1px 5px;border-radius:4px;font-size:12px;border:1px solid var(--rule-soft);font-family:"IBM Plex Mono",monospace}
+</style>
+<body>
+<div class="topbar">
+  <div class="wrap topbar-in">
+    <div class="brandmark"><span class="nm">Stock Role Playbook</span><span class="sub">erp.habibi-erp.com</span></div>
+    <button class="btn" id="soloBtn" type="button">Solo mode</button>
+    <div class="meter"><div class="meter-track"><div class="meter-fill" id="fill"></div></div><span class="meter-num" id="num">0 / 0</span></div>
+    <button class="btn" id="reset" type="button">Reset</button>
+  </div>
+</div>
+<div class="wrap">
+  <header class="mast">
+    <div class="eyebrow">Habibi Warehouse &middot; Stock PoC &middot; two seats</div>
+    <h1>One pallet of buns, two pairs of hands, every click written down.</h1>
+    <p class="lede">A delivery of burger buns, patties and packaging arrives at the central hub, is received into the warehouse, moved to the kitchen-ready zone, and consumed by the burger shop &mdash; on the real instance, with the real buttons.</p>
+  </header>
+  <section class="cast">
+    <div class="role wh"><span class="chip wh">WH</span><h4>Warehouse Mgr</h4><div class="erp">Warehouse Manager</div>
+      <p>Receives goods, manages bins, and authorizes stock transfers. The key to the gate.</p></div>
+    <div class="role st"><span class="chip st">ST</span><h4>Stock Clerk</h4><div class="erp">Stock User</div>
+      <p>Does the moving. Performs the physical count, creates the transfers, and marks the move done.</p></div>
+    <div class="role sys"><span class="chip sys">SYS</span><h4>Administrator</h4><div class="erp">System Manager</div>
+      <p>Sets up warehouses, bins, and item groups. Needed only for the foundation.</p></div>
+  </section>
+  <div class="shell">
+    <nav class="rail" aria-label="Parts"><div class="rail-h">Parts</div><div id="rail"></div></nav>
+    <main id="main"></main>
+  </div>
+</div>
+<script>
+const P = [
+  {
+    "code": "Part 0", "name": "Cast", "roles": ["sys"], "title": "Set up the two seats", "purpose": "Administrator only. Ensure the users and roles are wired for the warehouse flow.",
+    "procs": [
+      {
+        "n": "0.1", "role": ["sys"], "t": "Create Warehouse users",
+        "path": ["Search ⌘K", "type: User", "+ Add User"],
+        "do": ["Create two users: <code class=\"cp\">warehouse@habibi-burger.example</code> (Warehouse Manager) and <code class=\"cp\">clerk@habibi-burger.example</code> (Stock User)."],
+        "res": "Two enabled warehouse users exist."
+      },
+      {
+        "n": "0.2", "role": ["sys"], "t": "Assign Stock roles",
+        "path": ["User form", "Roles & Permissions tab"],
+        "do": ["Warehouse Manager gets <code class=\"cp\">Stock Manager</code>. Stock User gets <code class=\"cp\">Stock User</code>."],
+        "res": "Users show correct stock roles."
+      }
+    ]
+  },
+  {
+    "code": "Part 1", "name": "Foundation", "roles": ["sys"], "title": "Warehouses and Bins", "purpose": "Define the physical layout. Without bins, you just have a pile of stuff; with bins, you have a warehouse.",
+    "procs": [
+      {
+        "n": "1.1", "role": ["sys"], "t": "Create the Central Hub",
+        "path": ["Stock", "Warehouse", "+ Add Warehouse"],
+        "do": ["Create <code class=\"cp\">Central Hub</code>. Set it as a primary warehouse for Habibi Burger."],
+        "res": "Central Hub warehouse exists."
+      },
+      {
+        "n": "1.2", "role": ["sys"], "t": "Define the bins",
+        "path": ["Stock", "Warehouse Bin", "+ Add Bin"],
+        "do": ["Create <code class=\"cp\">REC-01</code> (Receiving) and <code class=\"cp\">KITCHEN-READY</code> (Staging for shop)."],
+        "res": "Bins are wired to the Central Hub."
+      }
+    ]
+  },
+  {
+    "code": "Part 2", "name": "Receiving", "roles": ["wh"], "title": "The pallet arrives", "purpose": "Move goods from the supplier into the system. This is the start of the stock chain.",
+    "procs": [
+      {
+        "n": "2.1", "role": ["wh"], "t": "Raise a Purchase Receipt",
+        "path": ["Stock", "Purchase Receipt", "+ Add Purchase Receipt"],
+        "do": ["Select the supplier, the warehouse (Central Hub), and the bin (REC-01). Add items: <code class=\"cp\">Buns</code> (1000 units), <code class=\"cp\">Patties</code> (1000 units)."],
+        "res": "Purchase Receipt is submitted and stock is recorded in REC-01."
+      }
+    ]
+  },
+  {
+    "code": "Part 3", "name": "Inventory", "roles": ["st"], "title": "Counting the goods", "purpose": "Verify that the system matches the shelf. The Stock Entry is the primary tool for adjustments.",
+    "procs": [
+      {
+        "n": "3.1", "role": ["st"], "t": "Check stock levels by bin",
+        "path": ["Stock", "Stock Ledger", "Filter by Warehouse/Bin"],
+        "do": ["Verify that 1000 Buns are sitting in REC-01."],
+        "res": "Ledger confirms stock in REC-01."
+      },
+      {
+        "n": "3.2", "role": ["st"], "t": "Perform a stock adjustment",
+        "path": ["Stock", "Stock Entry", "+ Add Stock Entry", "Type: Material Issue"],
+        "do": ["Simulate a damaged box: issue 10 units of Buns from REC-01."],
+        "res": "Stock Entry submitted; balance is now 990."
+      }
+    ]
+  },
+  {
+    "code": "Part 4", "name": "Internal Move", "roles": ["st"], "title": "Moving to the pass", "purpose": "Transfer stock between bins within the same warehouse. A Material Transfer is used for this.",
+    "procs": [
+      {
+        "n": "4.1", "role": ["st"], "t": "Transfer to Kitchen-Ready",
+        "path": ["Stock", "Stock Entry", "+ Add Stock Entry", "Type: Material Transfer"],
+        "do": ["Source: Central Hub (REC-01), Target: Central Hub (KITCHEN-READY). Move 500 Buns."],
+        "res": "Stock Entry submitted. 500 Buns now in KITCHEN-READY."
+      }
+    ]
+  },
+  {
+    "code": "Part 5", "name": "Consumption", "roles": ["st"], "title": "The shop eats the stock", "purpose": "The final step: stock leaves the warehouse to be used in production/sales.",
+    "procs": [
+      {
+        "n": "5.1", "role": ["st"], "t": "Issue to the Kitchen",
+        "path": ["Stock", "Stock Entry", "+ Add Stock Entry", "Type: Material Issue"],
+        "do": ["Issue 100 Buns from KITCHEN-READY. This simulates the shop taking its daily supply."],
+        "res": "Stock Entry submitted. Balance in KITCHEN-READY is 400."
+      }
+    ]
+  },
+  {
+    "code": "Part 6", "name": "Valuation", "roles": ["wh"], "title": "The money in the warehouse", "purpose": "Stock isn't just units; it's value. Check the Valuation Rate to ensure accounting is correct.",
+    "procs": [
+      {
+        "n": "6.1", "role": ["wh"], "t": "Check Stock Balance report",
+        "path": ["Stock", "Stock Balance"],
+        "do": ["Run the report for Central Hub. Verify the Valuation Rate matches the Purchase Receipt price."],
+        "res": "Report shows correct total value for the hub."
+      }
+    ]
+  },
+  {
+    "code": "Part 7", "name": "Analysis", "roles": ["wh"], "title": "Warehouse KPIs", "purpose": "Use the dashboard to find bottlenecks. A pile-up in REC-01 means the clerk is slow.",
+    "procs": [
+      {
+        "n": "7.1", "role": ["wh"], "t": "Review Stock Dashboard",
+        "path": ["Stock", "Dashboard"],
+        "do": ["Check the stock levels and movements. Look for items with zero balance."],
+        "res": "Dashboard populates with current stock state."
+      }
+    ]
+  }
+];
+const MATRIX = [["Item", "r", "rw", "full"], ["Warehouse", "r", "rw", "full"], ["Warehouse Bin", "r", "rw", "full"], ["Stock Entry", "rw", "rw", "full"], ["Purchase Receipt", "r", "rw", "full"], ["Stock Ledger", "r", "r", "full"]];
+const TRANSITIONS = [];
+const ROLE_NAME = {"od": "Order Desk", "wh": "Warehouse Manager", "st": "Stock User", "sys": "System Manager", "ai": "AI Agent", "any": "Any role"};
+const YOU_HAVE = ["wh","st"];
+const KEY="habibi-stock-playbook-v1";
+let state={}, solo=false;
+try{ const raw=JSON.parse(localStorage.getItem(KEY)||"{}"); state=raw.s||{}; solo=!!raw.solo; }catch(e){}
+function save(){ try{ localStorage.setItem(KEY, JSON.stringify({s:state, solo:solo})); }catch(e){} }
+const esc=s=>String(s).replace(/&(?![a-z#]+;)/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+const pid=(pi,ci)=>"p"+pi+"-"+ci;
+const main=document.getElementById("main"), rail=document.getElementById("rail");
+function chips(roles){ return roles.map(r=>'<span class="chip '+r+'" title="'+esc(ROLE_NAME[r])+'">'+(r==="any"?"any":r)+'</span>').join(" "); }
+const SOLO_SKIP = {};
+P.forEach((part,pi)=>{
+  const sec=document.createElement("section");
+  sec.className="part"; sec.id="part-"+pi;
+  let html='<div class="part-head"><div class="part-code"><span>'+esc(part.code)+' &middot; '+esc(part.name)+'</span>'
+    + chips(part.roles) + '<span class="rulefill"></span></div>'
+    + '<h2>'+esc(part.title)+'</h2><p class="purpose">'+part.purpose+'</p></div>';
+  part.procs.forEach((pc,ci)=>{
+    const id=pid(pi,ci);
+    let b='';
+    if(pc.path){
+      b+='<div class="path"><span class="lead">path</span>';
+      pc.path.forEach((s,i)=>{ if(i) b+='<span class="sep">&rsaquo;</span>'; b+='<span class="seg">'+s+'</span>'; });
+      b+='</div>';
+    }
+    if(pc.do){ b+='<ol class="do">'+pc.do.map(d=>'<li>'+d+'</li>').join("")+'</ol>'; }
+    if(pc.fields){
+      b+='<dl class="fields">';
+      pc.fields.forEach(f=>{ b+='<div class="frow"><dt>'+esc(f[0])+'</dt><dd><button class="cp" type="button" data-v="'+esc(f[1])+'">'+esc(f[1])+'</button>'+(f[2]?'<span class="fhint">'+esc(f[2])+'</span>':'')+'</dd></div>'; });
+      b+='</dl>';
+    }
+    if(pc.blocked){ b+='<div class="blocked"><span class="lbl">Role gate</span>'+pc.blocked+'</div>'; }
+    if(pc.gotcha){ b+='<div class="gotcha"><span class="lbl">Watch out</span>'+pc.gotcha+'</div>'; }
+    b+='<div class="result"><input type="checkbox" id="'+id+'"'+(state[id]?" checked":"")+'>'
+      +'<label for="'+id+'"><span class="lbl">Result</span>'+pc.res+'</label></div>';
+    html+='<article class="proc'+(state[id]?" checked":"")+'" data-id="'+id+'" data-n="'+esc(pc.n)+'"'+(solo && SOLO_SKIP[pc.n]?' style="opacity:.42"':'')+'>'
+      +'<div class="proc-top"><span class="proc-n">'+esc(pc.n)+'</span>'
+      +'<h3 class="proc-t">'+esc(pc.t)+'</h3>'+chips(pc.role)+'</div>'
+      +'<div class="proc-body">'+b+'</div></article>';
+  });
+  sec.innerHTML=html;
+  main.appendChild(sec);
+  const a=document.createElement("a");
+  a.href="#part-"+pi; a.dataset.part=pi;
+  a.innerHTML='<span class="dot"></span><span>'+esc(part.name)+'</span><span class="ct"></span>';
+  rail.appendChild(a);
+});
+const ap2=document.createElement("section");
+ap2.className="part"; ap2.id="part-matrix";
+let mh='<div class="part-head"><div class="part-code"><span>Appendix &middot; Matrix</span><span class="rulefill"></span></div>'
+ +'<h2>Who can touch what</h2><p class="purpose">Read from the permission rules on this instance. <code class="cp">r</code> read, <code class="cp">w</code> write, <code class="cp">c</code> create. On a submitted document, write reaches only the allow-on-submit fields.</p></div>'
+ +'<div class="tablewrap"><table><thead><tr><th>Doctype / surface</th><th>Warehouse Mgr</th><th>Stock User</th><th>Administrator</th></tr></thead><tbody>';
+MATRIX.forEach(r=>{
+  mh+='<tr><td class="dt">'+r[0]+'</td>';
+  for(let i=1;i<4;i++){ const v=r[i]; mh+='<td class="p'+(v==="&mdash;"?" hi":"")+'">'+v+'</td>'; }
+  mh+='</tr>';
+});
+mh+='</tbody></table></div>';
+ap2.innerHTML=mh; main.appendChild(ap2);
+const a2=document.createElement("a"); a2.href="#part-matrix"; a2.innerHTML='<span class="dot" style="border-style:dotted"></span><span>Matrix</span><span class="ct"></span>'; rail.appendChild(a2);
+const total=P.reduce((n,p)=>n+p.procs.length,0);
+function refresh(){
+  let done=0;
+  P.forEach((part,pi)=>{
+    let d=0; part.procs.forEach((_,ci)=>{ if(state[pid(pi,ci)]) d++; });
+    done+=d;
+    const a=rail.querySelector('a[data-part="'+pi+'"]');
+    if(a){ a.classList.toggle("done", d===part.procs.length); a.classList.toggle("part", d>0&&d<part.procs.length);
+      a.querySelector(".ct").textContent=d+"/"+part.procs.length; }
+  });
+  document.getElementById("fill").style.width=(total?done/total*100:0)+"%";
+  document.getElementById("num").textContent=done+" / "+total;
+  const sb=document.getElementById("soloBtn");
+  sb.classList.toggle("on",solo);
+  sb.textContent = solo ? "Solo mode: on" : "Solo mode";
+}
+main.addEventListener("change",e=>{
+  const cb=e.target.closest('input[type="checkbox"]'); if(!cb) return;
+  state[cb.id]=cb.checked; if(!cb.checked) delete state[cb.id];
+  cb.closest(".proc").classList.toggle("checked",cb.checked);
+  save(); refresh();
+});
+document.getElementById("soloBtn").addEventListener("click",()=>{
+  solo=!solo; save();
+  main.querySelectorAll(".proc").forEach(el=>{
+    const n=el.dataset.n;
+    el.style.opacity = (solo && SOLO_SKIP[n]) ? ".42" : "";
+  });
+  refresh();
+});
+document.getElementById("reset").addEventListener("click",()=>{
+  state={}; save();
+  main.querySelectorAll('input[type="checkbox"]').forEach(cb=>{cb.checked=false;});
+  main.querySelectorAll(".proc").forEach(s=>s.classList.remove("checked"));
+  refresh();
+});
+refresh();
+</script>
+<button id="__theme" type="button" aria-label="Toggle light or dark theme" title="Toggle theme">
+  <span id="__themeIcon">◑</span><span id="__themeTxt">Theme</span>
+</button>
+<style>
+#__theme{position:fixed;right:16px;bottom:16px;z-index:200;display:flex;align-items:center;gap:7px;
+  font-family:"IBM Plex Mono",ui-monospace,Menlo,monospace;font-size:11.5px;letter-spacing:.06em;
+  background:var(--surface,#fff);color:var(--ink-2,#333);border:1px solid var(--rule,#ccc);
+  border-radius:99px;padding:8px 14px;cursor:pointer;box-shadow:0 2px 10px rgba(0,0,0,.14)}
+#__theme:hover{border-color:var(--ink-3,#888);color:var(--ink,#000)}
+#__theme:focus-visible{outline:2px solid var(--brass,#A8500F);outline-offset:2px}
+#__themeIcon{font-size:14px;line-height:1}
+@media print{#__theme{display:none}}
+</style>
+<script>
+(function(){
+  var K="habibi-stock-doc-theme", root=document.documentElement;
+  var b=document.getElementById("__theme"), ic=document.getElementById("__themeIcon"), tx=document.getElementById("__themeTxt");
+  function sysDark(){ try { return window.matchMedia("(prefers-color-scheme: dark)").matches; }catch(e){ return false; } }
+  function paint(){
+    var t=root.getAttribute("data-theme");
+    if(!t){ ic.textContent="◑"; tx.textContent="Auto"; }
+    else if(t==="dark"){ ic.textContent="●"; tx.textContent="Dark"; }
+    else { ic.textContent="○"; tx.textContent="Light"; }
+  }
+  try{ var saved=localStorage.getItem(K); if(saved==="dark"||saved==="light") root.setAttribute("data-theme",saved); }catch(e){}
+  paint();
+  b.addEventListener("click",function(){
+    var cur=root.getAttribute("data-theme");
+    var next = !cur ? (sysDark()?"light":"dark") : (cur==="dark" ? "light" : null);
+    if(next){ root.setAttribute("data-theme",next); } else { root.removeAttribute("data-theme"); }
+    try{ if(next) localStorage.setItem(K,next); else localStorage.removeItem(K); }catch(e){}
+    paint();
+  });
+})();
+</script>
+</body>
+</html>
